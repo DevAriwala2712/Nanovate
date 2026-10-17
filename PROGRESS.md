@@ -229,3 +229,39 @@ Status: implemented; `pytest -q` = 96 passed (21 new). Results in `results/m4_al
 
 ### Next
 M5 (Module 2): aligned K = 32 stack + rank-2 randomized SVD + MAD, with singleton fallback. It is also the denoiser that should replace `pre_smooth` (which hid sub-resolution opens).
+
+---
+
+## Milestone M5: Module 2 low-rank stack (`modules/lowrank.py`, `tests/test_lowrank.py`, `scripts/lowrank_report.py`)
+Status: implemented; `pytest -q` = 106 passed (10 new). Results in `results/m5_lowrank/`. Synthetic data, Manhattan val, seed 0, Module-1 calibrated levels, fixed M2 rule (splice, region_tol 8, tau 0.45; nothing re-tuned for the stack field).
+
+### Built
+`denoise_stack`: align each die to T(C) (Module 3, bug #3), K = 32 matrix, seeded rank-2 randomized SVD (oversample 2, 2 power iterations), per-pixel MAD sigma across dies, threshold, field = L + S; `denoise_singleton` (median 3x3 + Gaussian 1 px) flagged `singleton=True`. Tested: randomized SVD vs full SVD (< 1e-3), seed determinism, defect in its own die only, singleton flag, soft vs hard vs support thresholds, residual smoothing as a matched filter.
+
+### Measured
+1. **Alignment matters at the Exp-4 range.** Low-rank residual ||D - L||/||D|| on noise-free dies with random ±8 px shifts: unaligned 0.211, template-aligned 0.110, oracle (true shifts undone) 0.111; consensus refinement adds nothing. With the testbed's default ±3 px shifts the gain is only ~10% (0.124 -> 0.110), because rank 2 absorbs first-order shifts. The remaining 0.11 is independent LER/grain per die. (The first test, on noisy dies at ±3 px, could not see this: shot noise alone is ~0.19 of the norm.)
+2. **Stack field vs per-patch smoothing in Module 4** (n = 48 clean + 36 killer dies per cell, 6 layouts x 8 clean + 6 defective dies; K = 32 with 6 defective dies per stack):
+
+| field | dose | false-killer | killer-correct | bridge | open | particle |
+|---|---|---|---|---|---|---|
+| smooth1 (aligned image, Gaussian 1 px) | 20 / 100 | 0.04 / 0.02 | 0.67 / 0.64 | 1.00 / 1.00 | 0.75 / 0.58 | 0.25 / 0.33 |
+| medgauss (singleton fallback) | 20 / 100 | 0.06 / 0.08 | 0.64 / 0.64 | 1.00 / 1.00 | 0.50 / 0.58 | 0.42 / 0.33 |
+| stack soft k2, no smoothing (spec) | 20 / 100 | **1.00** / 0.15 | 0.33 / 0.58 | 1.00 / 0.75 | 0.00 / 0.08 | 0.00 / 0.92 |
+| **stack soft k2 + residual smooth 1 (chosen)** | 20 / 100 | 0.15 / 0.00 | 0.61 / 0.64 | 0.92 / 0.92 | 0.08 / 0.08 | 0.83 / 0.92 |
+
+   Other variants (all in `results/m5_lowrank/rows.csv`): hard k3, hard k3 + smooth, hard k4 + smooth, soft k3 + smooth, support k2/k3 + smooth: false-killer 0.00-1.00; none beats the chosen one on both false-killer and killer-correct.
+3. **Net result: Module 2 does not beat per-patch smoothing for Module 4 in this testbed.** Overall killer-correct is equal within noise (0.61/0.64 vs 0.67/0.64), false-killer is slightly higher at dose 20 (0.15 vs 0.04). The error profile differs: the stack finds particles far better (0.83-0.92 vs 0.25-0.33) but loses opens (0.08 vs 0.58-0.75). Small n (12 per defect class per cell): differences of ~0.1-0.15 are within sampling noise; the particle and open gaps are not.
+4. Timing: ~16 ms/patch for a K = 32 stack including alignment (CPU).
+
+### Rulings / surprises
+1. **Default deviates from the spec** (spec: per-pixel MAD soft threshold on the residual): `denoise_stack(resid_smooth=1.0)` smooths each die's residual by 1 px before the threshold. At 0 (spec) isolated noise pixels survive and Module 4 sees many spurious components/holes (dose 20: false-killer 1.00, up to 6-8 extra holes per patch). Chosen on Manhattan val from 8 variants listed above, so it is a val-selected setting; the library helper `sparse_part` keeps resid_smooth = 0 as the spec baseline.
+2. **Opens are lost because narrow defects are attenuated twice** (smoothing, then soft shrinkage): at the open the aligned image has P down to 0.13-0.26 but L + S restores it to a mean 0.63-0.92 (S supplies -3..-16 counts of the ~-35 needed). My follow-up hypothesis (keep the raw residual amplitude on the smoothed-residual support, `support` mode) was **rejected**: false-killer 1.00 everywhere, because per-die LER makes the smoothed residual exceed the threshold along every edge, and the raw amplitude there puts pixel noise back. Not pursued further.
+3. A bug of mine while adding the options (a replace matched the wrong occurrence and truncated the module) was caught immediately by the import error in the tests and repaired by rewriting the file.
+4. The Anscombe transform is not used inside Module 2: the per-pixel MAD floor already tracks the heteroscedastic noise. It remains available in `calibration.py`.
+
+### Caveats
+- Stack stats here assume 6 of 32 dies defective (19%); a defect rate near 50% would break the MAD floor. Dies are all same-layout, aligned to T(C) which carries the ~0.4 px CAD/wafer floor.
+- tau/region_tol/levels were not re-tuned for the stack field; opens may need a different rule.
+
+### Next
+M6 baselines: die-to-die (single and double difference) and the Manhattan-only CNN, with thresholds chosen on Manhattan val only.
