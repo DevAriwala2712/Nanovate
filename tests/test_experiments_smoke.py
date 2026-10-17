@@ -34,10 +34,11 @@ def ctx(root):
 
 
 def test_select_config_writes_frozen_decisions(root, ctx):
-    d = json.loads((Path(root) / "quick" / "calib" / "decisions.json").read_text())
+    d = json.loads((Path(root) / "v2" / "quick" / "calib" / "decisions.json").read_text())
     assert d["pipeline_cfg"]["field_option"] in ("percentile", "calibrated", "template")
-    assert d["near_miss_budget"] == 0.05 and d["quick"] is True
-    assert (Path(root) / "quick" / "calib" / "candidates.csv").exists()
+    assert d["near_miss_budget"] == 0.05 and d["quick"] is True and d["version"] == "v2"
+    assert d["pipeline_cfg"]["h1_fill"] == "dielectric"
+    assert (Path(root) / "v2" / "quick" / "calib" / "candidates.csv").exists()
     assert select_config.load_pipeline_cfg(TINY).tau == d["pipeline_cfg"]["tau"]
 
 
@@ -51,7 +52,7 @@ def test_select_config_writes_frozen_decisions(root, ctx):
 def test_experiment_runs_and_writes_csv_png_config(root, ctx, mod, cols, files):
     tab = mod.run(TINY, ctx)
     assert cols <= set(tab.columns) and len(tab) > 0 and (tab["n"] > 0).all()
-    out = Path(root) / "quick" / mod.__name__.split(".")[-1].split("_")[0].replace("exp", "exp")
+    out = Path(root) / "v2" / "quick" / mod.__name__.split(".")[-1].split("_")[0].replace("exp", "exp")
     for f in files:
         assert (out / f).exists(), f
     cfg = json.loads((out / "config.json").read_text())
@@ -75,7 +76,7 @@ def test_two_runs_give_identical_non_timing_tables(root, ctx, mod):
 def test_readme_tables_come_from_the_csvs_and_update_is_idempotent(root, ctx, tmp_path):
     from experiments import report
 
-    qroot = Path(root) / "quick"
+    qroot = Path(root) / "v2" / "quick"
     exp2_dose.run(TINY, ctx)   # make the test independent of test order
     text = report.render_tables(qroot)
     assert "synthetic data" in text and "Exp 2" in text and "Pre-registered targets vs measured" in text

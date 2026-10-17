@@ -212,3 +212,52 @@ def test_near_miss_branch():
     assert v2 == NEAR_MISS
     assert r2["near_miss_enabled"] is True
     assert r2["max_sdf_energy"] == 0.2
+
+
+def _seam_case():
+    """64 px tile, window margin 8: a vertical wire crossing the window edge; tol 4."""
+    win = Window(size=64, margin=8)
+    cad = np.zeros((64, 64), bool)
+    cad[:, 26:40] = True
+    return win, cad
+
+
+def test_dielectric_h1_fill_removes_splice_seam_hole():
+    """v2 bug fix: an indentation that reaches the splice seam is closed into a hole by the CAD fill."""
+    win, cad = _seam_case()
+    img = cad.astype(float)
+    img[56:60, 31:35] = 0.0   # dielectric pocket open only towards rows >= 60 (outside the relevance region)
+    kw = dict(tau=0.45, field_option="calibrated", levels=(0.0, 1.0), region_tol=4)
+    v1, r1 = verify_topology(img, cad, win, h1_fill="cad", **kw)
+    v2, r2 = verify_topology(img, cad, win, h1_fill="dielectric", **kw)
+    assert r1["delta_betti"] == (0, 1) and v1 == KILLER_BRIDGE   # the v1 seam artifact
+    assert r2["delta_betti"] == (0, 0) and v2 == NUISANCE
+
+
+def test_dielectric_h1_fill_keeps_holes_inside_the_region():
+    """A void inside a wire, well inside the window, is still a new hole with the dielectric fill."""
+    win, cad = _seam_case()
+    img = cad.astype(float)
+    img[30:34, 31:35] = 0.0
+    v, r = verify_topology(img, cad, win, tau=0.45, field_option="calibrated", levels=(0.0, 1.0), region_tol=4, h1_fill="dielectric")
+    assert r["delta_betti"] == (0, 1) and v == KILLER_BRIDGE
+
+
+def test_near_miss_requires_peak_z_when_set():
+    base = dict(d_bottleneck=0.25, sdf_energy=0.5, d_star=0.20, e_star=0.40)
+    assert classify_verdict((0, 0), **base) == NEAR_MISS                       # v1: no z condition
+    assert classify_verdict((0, 0), peak_z=8.0, z_star=5.0, **base) == NEAR_MISS
+    assert classify_verdict((0, 0), peak_z=3.0, z_star=5.0, **base) == NUISANCE
+
+
+def test_reference_cache_returns_identical_verdicts():
+    """Caching the CAD reference changes no output (same verdict and reason on a repeat call)."""
+    from nanovate.modules import topology as T
+    win, cad = _seam_case()
+    img = cad.astype(float); img[30:34, 31:35] = 0.0
+    kw = dict(tau=0.45, field_option="calibrated", levels=(0.0, 1.0), region_tol=4, h1_fill="dielectric")
+    T._REF_CACHE.clear()
+    v1, r1 = verify_topology(img, cad, win, **kw)
+    assert len(T._REF_CACHE) == 1
+    v2, r2 = verify_topology(img, cad, win, **kw)
+    assert v1 == v2 and r1["delta_betti"] == r2["delta_betti"] and r1["bottleneck_max"] == r2["bottleneck_max"]

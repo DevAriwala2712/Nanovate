@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
+V1_START, V1_END = "<!-- RESULTS_V1:START -->", "<!-- RESULTS_V1:END -->"
 METHOD_NAMES = {"verifier": "Verifier (ours)", "d2d_single": "Die-to-die (single)", "d2d_double": "Die-to-die (double)", "cnn": "CNN (Manhattan-trained)"}
 
 
@@ -41,13 +42,19 @@ def render_tables(root: str | Path) -> str:
     parts: list[str] = []
     dec = root / "calib" / "decisions.json"
     mode = "quick (small n, smoke-level)" if "quick" in root.parts else "full"
-    head = f"_All numbers below are **synthetic data** ({mode} run; 95% percentile-bootstrap CIs in brackets, n beside every number)._"
+    version = "v2" if "v2" in root.parts else "v1"
+    head = f"_All numbers below are **synthetic data** ({mode} run, {version}; 95% percentile-bootstrap CIs in brackets, n beside every number)._"
+    if version == "v2":
+        head += ("\n\n_v2 is a **post-hoc revision**: its fixes were designed after the v1 test results were seen "
+                 "(splice-seam holes, LER-robust near-miss selection, faster calibration; see `docs/V2_FIXES.md`). "
+                 "Every v2 choice was made on Manhattan val only and the targets are unchanged; v1 numbers are kept below._")
     if dec.exists():
         d = json.loads(dec.read_text())
         c = d["pipeline_cfg"]
         head += (f"\n\n_Verifier config frozen on Manhattan val: field `{c['field_option']}`, region `{c['region_mode']}`, tau {c['tau']}, "
-                 f"pre-smooth {c['pre_smooth']} px, d* {c['d_star']}, e* {c['e_star']} "
-                 f"(val killer F1 {d['chosen']['f1']:.2f}, n={d['chosen']['n']})._")
+                 f"pre-smooth {c['pre_smooth']} px, d* {c['d_star']}, e* {c['e_star']}"
+                 + (f", z* {c.get('z_star')}, holes `{c.get('h1_fill', 'cad')}`" if version == "v2" else "")
+                 + f" (val killer F1 {d['chosen']['f1']:.2f}, n={d['chosen']['n']})._")
     parts.append(head)
 
     e1, e2, e3 = _read(root, "exp1", "nuisance_stress"), _read(root, "exp2", "dose_cliff"), _read(root, "exp3", "geometry_f1")
@@ -96,7 +103,7 @@ def render_tables(root: str | Path) -> str:
                 r = e1[(e1.method == m) & (e1.metric == metric) & (e1.ler_sigma == sig) & (e1.grain == gr)]
                 cells.append(_ci(r["mean"].iloc[0], r.ci_lo.iloc[0], r.ci_hi.iloc[0], r.n.iloc[0], pct=True) if len(r) else "n/a")
             rows.append([name, *cells])
-        parts.append(f"#### Exp 1 - nuisance stress (LER sigma {sig:g} nm, grain {gr:.0%}; full grid in `results/exp1/`)\n\n" + _md(["Method", "Nuisance suppression (NUISANCE verdict)", "Nuisance not flagged KILLER (secondary)", "Bridge recall"], rows))
+        parts.append(f"#### Exp 1 - nuisance stress (LER sigma {sig:g} nm, grain {gr:.0%}; full grid in `{root.as_posix()}/exp1/`)\n\n" + _md(["Method", "Nuisance suppression (NUISANCE verdict)", "Nuisance not flagged KILLER (secondary)", "Bridge recall"], rows))
     if e2 is not None:
         doses = sorted(e2.dose.unique())
         rows = []
@@ -111,6 +118,15 @@ def render_tables(root: str | Path) -> str:
         if low is not None:
             extra = "\n\nLowest dose with F1 >= 0.9: " + "; ".join(f"{METHOD_NAMES.get(r.method, r.method)}: {r.lowest_dose_f1_ge_0p9}" for r in low.itertuples())
         parts.append("#### Exp 2 - killer F1 vs dose (e-/px)\n\n" + _md(["Method", *[f"{dz:g}" for dz in doses]], rows) + extra)
+        ce = _read(root, "exp2", "ceiling")
+        if ce is not None:
+            crow = [[r.what, _ci(r.f1, r.ci_lo, r.ci_hi, r.n), f"{100 * r.nuisance_suppression:.0f}%",
+                     " / ".join(f"{100 * getattr(r, 'recall_' + k):.0f}%" for k in ("bridge", "open", "particle"))] for r in ce.itertuples()]
+            last = ce.iloc[-1]
+            sub = "; ".join(f"{k} {int(last['subres_' + k])}/{int(last['n_' + k])}" for k in ("bridge", "open", "particle") if f"subres_{k}" in ce)
+            parts.append("#### Exp 2 diagnostic - verifier ceiling without shot noise (not a target)\n\n"
+                         + _md(["Input", "Killer F1", "Nuisance suppression", "Recall bridge / open / particle"], crow)
+                         + (f"\n\nKillers missed even noise-free (below this verifier's optical resolution): {sub}." if sub else ""))
     if e3 is not None:
         fams = list(e3.family.unique())
         rows = [[name, *[_ci(*(lambda r: (r.f1.iloc[0], r.ci_lo.iloc[0], r.ci_hi.iloc[0], r.n.iloc[0]))(e3[(e3.method == m) & (e3.family == f)])) for f in fams]]
@@ -137,14 +153,15 @@ def render_tables(root: str | Path) -> str:
     return "\n\n".join(parts)
 
 
-def update_readme(readme: str | Path, root: str | Path) -> str:
-    """Replace the text between the RESULTS markers with freshly rendered tables. Returns the new text."""
+def update_readme(readme: str | Path, root: str | Path, markers: tuple[str, str] = (START, END)) -> str:
+    """Replace the text between ``markers`` with freshly rendered tables. Returns the new text."""
+    start, end = markers
     readme = Path(readme)
     text = readme.read_text()
-    block = f"{START}\n{render_tables(root)}\n{END}"
-    if START in text and END in text:
-        head, rest = text.split(START, 1)
-        _, tail = rest.split(END, 1)
+    block = f"{start}\n{render_tables(root)}\n{end}"
+    if start in text and end in text:
+        head, rest = text.split(start, 1)
+        _, tail = rest.split(end, 1)
         new = head + block + tail
     else:
         new = text.rstrip("\n") + "\n\n## Results\n\n" + block + "\n"

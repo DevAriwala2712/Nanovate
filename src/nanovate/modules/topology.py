@@ -14,6 +14,9 @@ Verdicts:
 """
 from __future__ import annotations
 
+import hashlib
+from collections import OrderedDict
+
 import gudhi
 import numpy as np
 
@@ -27,6 +30,36 @@ KILLER_BRIDGE = "KILLER_BRIDGE"
 KILLER_OPEN_PARTICLE = "KILLER_OPEN/PARTICLE"
 NEAR_MISS = "NEAR_MISS"
 NUISANCE = "NUISANCE"
+
+
+_REF_CACHE: OrderedDict = OrderedDict()
+_REF_CACHE_SIZE = 64
+
+
+def _reference(cad: np.ndarray, win: Window | None, region_tol: int, h1_fill: str):
+    """CAD-only quantities of the splice comparison: (region, H0 ref diagram, H1 ref diagram).
+
+    They depend on the CAD clip alone, so they are cached per (CAD, window, region_tol, h1_fill); the
+    cache changes no result, only removes repeated persistence of the same reference (Exp 6).
+    """
+    key = (hashlib.sha1(np.ascontiguousarray(cad, dtype=bool).tobytes()).hexdigest(), cad.shape, win, region_tol, h1_fill)
+    hit = _REF_CACHE.get(key)
+    if hit is not None:
+        _REF_CACHE.move_to_end(key)
+        return hit
+    cadf = cad.astype(float)
+    reg = relevance_region(cad, win, tol=region_tol) if win is not None else None
+    d0r, d1r = compute_persistence_intervals(cadf)
+    if reg is not None and h1_fill == "dielectric":
+        d1r = compute_persistence_intervals(np.where(reg, cadf, 0.0))[1]
+    out = (reg, d0r, d1r)
+    for a in out:
+        if a is not None:
+            a.setflags(write=False)
+    _REF_CACHE[key] = out
+    if len(_REF_CACHE) > _REF_CACHE_SIZE:
+        _REF_CACHE.popitem(last=False)
+    return out
 
 
 def compute_persistence_intervals(field: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -73,6 +106,8 @@ def classify_verdict(
     sdf_energy: float = 0.0,
     d_star: float = float("inf"),
     e_star: float = float("inf"),
+    peak_z: float = float("inf"),
+    z_star: float = float("-inf"),
 ) -> str:
     """Classify defect verdict according to the AGENTS.md §5.2 ladder.
 
@@ -88,7 +123,7 @@ def classify_verdict(
     if d0 > 0 or d1 < 0:
         return KILLER_OPEN_PARTICLE
     if d0 == 0 and d1 == 0:
-        if d_bottleneck >= d_star and sdf_energy >= e_star:
+        if d_bottleneck >= d_star and sdf_energy >= e_star and peak_z >= z_star:
             return NEAR_MISS
         return NUISANCE
     return KILLER_OPEN_PARTICLE
@@ -111,6 +146,9 @@ def verify_topology(
     region_tol: int = 4,
     region_mode: str = "splice",
     field_kwargs: dict | None = None,
+    h1_fill: str = "cad",
+    peak_z: float | None = None,
+    z_star: float = float("-inf"),
 ) -> tuple[str, dict]:
     """Verify topology of SEM patch against CAD reference (AGENTS.md §5.2).
 
@@ -132,6 +170,9 @@ def verify_topology(
         region_mode: 'splice' (field replaced by CAD outside the region, GUDHI on the tile) or
             'pairs' (no splice: region-local union-find persistence counts only features whose
             component reaches the region; needs ``win``).
+        h1_fill: splice mode only. 'cad' (v1): holes counted on the CAD-filled splice.
+            'dielectric' (v2): holes counted with dielectric outside the region (image and
+            reference alike), so a pocket touching the splice seam is never a hole.
 
     Returns:
         (verdict, reason_dict)
@@ -158,15 +199,20 @@ def verify_topology(
     else:
         if region_mode not in ("splice", "pairs"):
             raise ValueError(f"unknown region_mode {region_mode!r}")
-        if win is not None:
-            # Field replaced by the CAD outside the label's relevance region, so wire
-            # fragments created at the window edge cannot add or remove components.
-            reg = relevance_region(cad, win, tol=region_tol)
-            f_eval = np.where(reg, field, cad.astype(float))
-        else:
-            f_eval = field
+        if h1_fill not in ("cad", "dielectric"):
+            raise ValueError(f"unknown h1_fill {h1_fill!r}")
+        cadf = cad.astype(float)
+        # Field replaced by the CAD outside the label's relevance region, so wire
+        # fragments created at the window edge cannot add or remove components.
+        reg, diag0_ref, diag1_ref = _reference(cad, win, region_tol, h1_fill)
+        f_eval = np.where(reg, field, cadf) if reg is not None else field
         diag0_img, diag1_img = compute_persistence_intervals(f_eval)
-        diag0_ref, diag1_ref = compute_persistence_intervals(cad.astype(float))
+        if reg is not None and h1_fill == "dielectric":
+            # v2: holes from a dielectric-filled splice. Where an image edge (LER, residual shift)
+            # does not meet the CAD fill at the region boundary, the CAD-filled splice closes a
+            # dielectric pocket into a spurious hole (seam artifact). Filling outside the region
+            # with dielectric opens every pocket that touches the seam, in image and reference alike.
+            diag1_img = compute_persistence_intervals(np.where(reg, field, 0.0))[1]
         beta_img = betti_from_intervals(diag0_img, diag1_img, tau)
         beta_ref = betti_from_intervals(diag0_ref, diag1_ref, tau)
         bot0, bot1 = compute_bottleneck_distances(diag0_img, diag1_img, diag0_ref, diag1_ref)
@@ -176,7 +222,8 @@ def verify_topology(
     # 6. Verdict determination
     near_miss_enabled = sdf_energy is not None and not np.isinf(d_star) and not np.isinf(e_star)
     eff_energy = 0.0 if sdf_energy is None else sdf_energy
-    verdict = classify_verdict(delta_beta, bot_max, eff_energy, d_star, e_star)
+    verdict = classify_verdict(delta_beta, bot_max, eff_energy, d_star, e_star,
+                               float("inf") if peak_z is None else peak_z, z_star)
 
     reason = {
         "verdict": verdict,
@@ -194,6 +241,9 @@ def verify_topology(
         "singleton": singleton,
         "region_mode": region_mode,
         "region_tol": region_tol,
+        "h1_fill": h1_fill,
+        "peak_z": peak_z,
+        "z_star": z_star,
         "field_meta": meta,
     }
     return verdict, reason

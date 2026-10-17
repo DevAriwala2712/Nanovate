@@ -35,14 +35,15 @@ class ExpCfg:
     exp6_patches: int = 1000
     val_layouts: int = 8              # Manhattan val layouts for baseline rule fitting / config selection
     val_dies: int = 2
+    version: str = "v2"               # 'v1' = first pre-registered run (results/); 'v2' = post-hoc fixes (results/v2/)
 
     @classmethod
-    def full(cls) -> "ExpCfg":
-        return cls(quick=False)
+    def full(cls, version: str = "v2") -> "ExpCfg":
+        return cls(quick=False, version=version)
 
     @classmethod
-    def quick(cls) -> "ExpCfg":  # noqa: F811 (classmethod shares the field name on purpose)
-        return cls(quick=True, layouts=3, dies=1, n_boot=200, doses=(20, 50, 200), exp1_sigmas=(0.5, 1.5, 2.5),
+    def quick(cls, version: str = "v2") -> "ExpCfg":  # noqa: F811 (classmethod shares the field name on purpose)
+        return cls(quick=True, version=version, layouts=3, dies=1, n_boot=200, doses=(20, 50, 200), exp1_sigmas=(0.5, 1.5, 2.5),
                    exp1_grains=(0.0, 0.30), exp5_dies=2, exp6_calib_runs=10, exp6_patches=24, val_layouts=3, val_dies=1)
 
     def to_dict(self) -> dict:
@@ -53,6 +54,7 @@ class ExpCfg:
         d = dict(d)
         for k in ("doses", "exp1_sigmas", "exp1_grains"):
             d[k] = tuple(d[k])
+        d.setdefault("version", "v1")  # configs written before v2 existed
         return cls(**d)
 
 

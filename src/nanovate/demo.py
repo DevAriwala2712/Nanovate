@@ -25,13 +25,14 @@ from .testbed.dataset import Sample, make_sample, window
 from .testbed.scribe import make_scribe_patches
 
 
-def load_frozen_cfg(path: str | Path = "results/calib/decisions.json") -> PipelineCfg:
-    """Verifier config frozen on Manhattan val by experiments/select_config.py (default config if absent)."""
+def load_frozen_cfg(path: str | Path = "results/v2/calib/decisions.json") -> PipelineCfg:
+    """Verifier config frozen on Manhattan val by experiments/select_config.py (default: v2; default config if absent)."""
     p = Path(path)
     if not p.exists():
         return PipelineCfg()
     d = json.loads(p.read_text())["pipeline_cfg"]
-    return PipelineCfg(**{k: (float("inf") if v is None and k in ("d_star", "e_star") else v) for k, v in d.items()})
+    d = {k: (float("inf") if v is None and k in ("d_star", "e_star") else v) for k, v in d.items()}
+    return PipelineCfg(**{k: (float("-inf") if v is None and k == "z_star" else v) for k, v in d.items()})
 
 
 @dataclass

@@ -129,23 +129,34 @@ class Calibration:
         return gat(image, self.alpha, self.sigma2)
 
 
-def _shifted_features(cad: np.ndarray, d: tuple[float, float], s1: float, s2: float) -> np.ndarray:
-    """Features of the CAD clip shifted by ``d`` px (bilinear shift of the binary CAD, then blur).
+def _shifted_features(F: np.ndarray, d: tuple[float, float]) -> np.ndarray:
+    """Features of the CAD clip shifted by ``d`` px, from its unshifted feature stack ``F``.
 
-    Much cheaper than cubic-shifting five feature channels; the Gaussian blur that follows hides
-    the interpolation (extra blur ~0.3 px at 1.5 px feature scale).
+    Bilinear shift and Gaussian blur are both convolutions and commute, so shifting the two
+    blurred channels equals blurring the bilinearly shifted CAD (up to the ``nearest`` border);
+    gradient and Laplacian are recomputed from the shifted G1*C. Avoids re-blurring per pass.
     """
-    return features(ndi.shift(np.asarray(cad, dtype=float), d, order=1, mode="nearest"), s1, s2)
+    g1 = ndi.shift(F[..., 1], d, order=1, mode="nearest")
+    g2 = ndi.shift(F[..., 2], d, order=1, mode="nearest")
+    gy, gx = np.gradient(g1)
+    return np.stack([F[..., 0], g1, g2, np.hypot(gx, gy), ndi.laplace(g1, mode="nearest")], axis=-1)
 
 
 def _fit(Fs: list[np.ndarray], ys: list[np.ndarray], ridge: float) -> np.ndarray:
-    X = np.concatenate([f.reshape(-1, 5) for f in Fs])
-    y = np.concatenate([v.ravel() for v in ys])
-    mu, sd = X[:, 1:].mean(0), X[:, 1:].std(0) + 1e-12
-    Z = np.concatenate([np.ones((X.shape[0], 1)), (X[:, 1:] - mu) / sd], axis=1)
-    n = Z.shape[0]
+    # Closed-form ridge on standardised features, computed from 5x5 moment sums instead of the
+    # (n, 5) standardised design matrix: same normal equations, ~10x less work per fit.
+    G = np.zeros((5, 5)); b = np.zeros(5); n = 0
+    for f, v in zip(Fs, ys):
+        X = f.reshape(-1, 5)
+        G += X.T @ X; b += X.T @ v.ravel(); n += X.shape[0]
+    G /= n; b /= n
+    mu = G[0, 1:]                                   # column means (column 0 is the constant 1)
+    cov = G[1:, 1:] - np.outer(mu, mu)
+    sd = np.sqrt(np.maximum(np.diag(cov), 0.0)) + 1e-12
+    ZZ = np.eye(5); ZZ[1:, 1:] = cov / np.outer(sd, sd)
+    Zy = np.empty(5); Zy[0] = b[0]; Zy[1:] = (b[1:] - mu * b[0]) / sd
     pen = np.diag([0.0, ridge, ridge, ridge, ridge])
-    ws = np.linalg.solve(Z.T @ Z / n + pen, Z.T @ y / n)
+    ws = np.linalg.solve(ZZ + pen, Zy)
     w = np.empty(5)
     w[1:] = ws[1:] / sd
     w[0] = ws[0] - float(w[1:] @ mu)
@@ -189,7 +200,7 @@ def calibrate(
     if register:
         for _ in range(2):  # registration against the current template, then refit
             shifts = [estimate_shift(y, F @ w) for F, y in zip(Fs, ys)]
-            Fa = [_shifted_features(c, d, s1, s2) for (c, _), d in zip(patches, shifts)]
+            Fa = [_shifted_features(F, d) for F, d in zip(Fs, shifts)]
             w = _fit(Fa, ys, ridge)
         Fs = Fa
     alpha, sigma2 = noise_from_flat(Fs, ys, w)

@@ -5,3 +5,5 @@ __pycache__/
 .pytest_cache/
 results/cache/
 *.egg-info/
+results/quick/
+results/v2/quick/

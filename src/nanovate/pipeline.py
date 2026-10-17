@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
-from .modules.align_sdf import align_to_template, max_tension_energy
+from .modules.align_sdf import align_to_template, energy_map, peak_z
 from .modules.calibration import Calibration, features
 from .modules.lowrank import denoise_stack
 from .modules.topology import verify_topology
@@ -38,6 +38,8 @@ class PipelineCfg:
     e_star: float = float("inf")       # SDF-energy threshold for NEAR_MISS (inf = rule off)
     gamma: float = 0.2                 # SDF energy exponent, 1/px (fixed a priori)
     cap: float = 10.0                  # |phi| cap in the energy, px
+    h1_fill: str = "cad"               # 'cad' (v1) | 'dielectric' (v2: no splice-seam holes)
+    z_star: float = float("-inf")      # peak-z threshold for NEAR_MISS (-inf = v1 rule, no z condition)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -52,14 +54,15 @@ class PipelineResult:
     timings_ms: dict = field(default_factory=dict)
 
 
-def _topology(field_img, cad, cal, win, cfg, template, energy, singleton, pre_smooth):
+def _topology(field_img, cad, cal, win, cfg, template, energy, singleton, pre_smooth, pz=None):
     kw = {}
     if cfg.field_option == "template":
         kw = dict(template=template, cad_smooth=features(cad, *cal.sigmas)[..., 1], contrast=cal.mu_cond - cal.mu_diel)
     return verify_topology(
         field_img, cad, win, tau=cfg.tau, field_option=cfg.field_option, levels=cal.levels,
         pre_smooth=pre_smooth, d_star=cfg.d_star, e_star=cfg.e_star, sdf_energy=energy, singleton=singleton,
-        region_tol=cfg.region_tol, region_mode=cfg.region_mode, field_kwargs=kw,
+        region_tol=cfg.region_tol, region_mode=cfg.region_mode, field_kwargs=kw, h1_fill=cfg.h1_fill,
+        peak_z=pz, z_star=cfg.z_star,
     )
 
 
@@ -71,10 +74,11 @@ def verify_patch(image: np.ndarray, cad: np.ndarray, cal: Calibration, win: Wind
     aligned, shift = align_to_template(image, template) if cfg.align else (np.asarray(image, dtype=float), (0.0, 0.0))
     t["align"] = (time.perf_counter() - t0) * 1e3
     t0 = time.perf_counter()
-    energy = max_tension_energy(image, cad, cal, win, cfg.gamma, cfg.cap, aligned=aligned)
+    emap = energy_map(image, cad, cal, win, cfg.gamma, cfg.cap, aligned=aligned)
+    energy, pz = float(emap.max()), peak_z(emap)
     t["sdf_energy"] = (time.perf_counter() - t0) * 1e3
     t0 = time.perf_counter()
-    verdict, reason = _topology(aligned, cad, cal, win, cfg, template, energy, True, cfg.pre_smooth)
+    verdict, reason = _topology(aligned, cad, cal, win, cfg, template, energy, True, cfg.pre_smooth, pz)
     t["topology"] = (time.perf_counter() - t0) * 1e3
     return PipelineResult(verdict, reason, True, shift, t)
 
@@ -97,10 +101,11 @@ def verify_stack(images: list[np.ndarray], cad: np.ndarray, cal: Calibration, wi
     for k in range(len(images)):
         t = {"stack": stack_ms}
         t0 = time.perf_counter()
-        energy = max_tension_energy(images[k], cad, cal, win, cfg.gamma, cfg.cap, aligned=res.field[k])
+        emap = energy_map(images[k], cad, cal, win, cfg.gamma, cfg.cap, aligned=res.field[k])
+        energy, pz = float(emap.max()), peak_z(emap)
         t["sdf_energy"] = (time.perf_counter() - t0) * 1e3
         t0 = time.perf_counter()
-        verdict, reason = _topology(res.field[k], cad, cal, win, cfg, template, energy, False, 0.0)
+        verdict, reason = _topology(res.field[k], cad, cal, win, cfg, template, energy, False, 0.0, pz)
         t["topology"] = (time.perf_counter() - t0) * 1e3
         out.append(PipelineResult(verdict, reason, False, res.shifts[k], t))
     return out

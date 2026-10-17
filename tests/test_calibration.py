@@ -137,3 +137,28 @@ def test_neighbour_difference_noise_fit_ignores_ramp_and_grain():
     assert a_plain > 1.5, "setup: plain residual fit should be inflated by ramp/grain"
     assert a_diff == pytest.approx(1.0, rel=0.15)
     assert 0.0 <= s2_diff < 3.0
+
+
+def test_moment_ridge_equals_design_matrix_ridge():
+    """The 5x5-moment ridge solves the same normal equations as the explicit standardised design."""
+    from nanovate.modules.calibration import _fit
+    rng = np.random.default_rng(3)
+    Fs = [features(_rect_cad(rng), S1, S2) for _ in range(3)]
+    ys = [F @ np.array([2.0, 5.0, 1.0, -3.0, 0.5]) + rng.normal(0, 0.3, F.shape[:2]) for F in Fs]
+    X = np.concatenate([f.reshape(-1, 5) for f in Fs]); y = np.concatenate([v.ravel() for v in ys])
+    mu, sd = X[:, 1:].mean(0), X[:, 1:].std(0) + 1e-12
+    Z = np.concatenate([np.ones((len(X), 1)), (X[:, 1:] - mu) / sd], axis=1)
+    ws = np.linalg.solve(Z.T @ Z / len(Z) + np.diag([0, 1e-3, 1e-3, 1e-3, 1e-3]), Z.T @ y / len(Z))
+    w_ref = np.r_[ws[0] - (ws[1:] / sd) @ mu, ws[1:] / sd]
+    assert np.allclose(_fit(Fs, ys, 1e-3), w_ref, rtol=1e-8, atol=1e-8)
+
+
+def test_shifted_features_equal_features_of_shifted_cad_in_interior():
+    """Shift and blur commute: shifting G*C equals blurring the shifted CAD (away from the border)."""
+    from nanovate.modules.calibration import _shifted_features
+    cad = _rect_cad(np.random.default_rng(4)).astype(float)
+    d = (0.37, -1.62)
+    ref = features(ndi.shift(cad, d, order=1, mode="nearest"), S1, S2)
+    got = _shifted_features(features(cad, S1, S2), d)
+    inner = (slice(20, -20), slice(20, -20))
+    assert np.abs(got[inner] - ref[inner]).max() < 1e-6

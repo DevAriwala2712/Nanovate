@@ -2,7 +2,7 @@
 
 Writes frontend/data/run.js (``window.NANOVATE_RUN = {...}``; a script file so the UI also works from
 file://). Each sample goes through the real pipeline (Module 1 calibration on scribe patches, Module 3
-alignment + SDF energy, Module 4 with the config frozen on Manhattan val in results/calib/decisions.json);
+alignment + SDF energy, Module 4 with the config frozen on Manhattan val in results/v2/calib/decisions.json);
 every number is computed here, nothing is simulated or typed in. Synthetic data.
 
 Usage: python scripts/export_ui.py [--seed 0] [--split val] [--per-cell 2] [--dose 50] [--out PATH]
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--split", default="val")
     ap.add_argument("--per-cell", type=int, default=2, help="dies per (family, kind)")
     ap.add_argument("--dose", type=float, default=50.0, help="e-/px")
-    ap.add_argument("--decisions", default="results/calib/decisions.json", help="frozen verifier config")
+    ap.add_argument("--decisions", default="results/v2/calib/decisions.json", help="frozen verifier config")
     ap.add_argument("--out", default=str(OUT))
     a = ap.parse_args(argv)
 

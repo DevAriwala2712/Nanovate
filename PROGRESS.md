@@ -1,6 +1,6 @@
 # PROGRESS.md — Nanovate SEM Topology Defect Verifier
 
-Status: **M1 complete. M2 code + tests green (45 passed); M2 early-risk probe and field/tau choice still open.**
+Status: **M1-M8 done (v1). v2 post-hoc fixes done (`docs/V2_FIXES.md`); `pytest -q` = 170 passed.**
 Contract: `AGENTS.md` (authoritative precedence: AGENTS.md > v4.0 Part A > protocol > v3.0).
 All results reported here are from **synthetic data**.
 
@@ -362,3 +362,43 @@ Status: done. `pytest -q` = 163 passed (6 new demo/export tests). No new depende
 - No pre-registered target was changed. A label-free per-stack d* (PLAN §4.2 candidate) and a near-miss rule that adapts to LER were not implemented (Exp 1 shows the frozen d*/e* do not transfer to rougher LER).
 - Results come from one full run and one CNN training run (seed 0); no seed-to-seed variance is reported.
 - The stretch items (blind-spot denoiser, persistence-image few-shot classifier, GPU SVD) were not started.
+
+---
+
+## v2: post-hoc fixes after the v1 test results (`docs/V2_FIXES.md`)
+Status: done. `pytest -q` = 170 passed (7 new). Full run `python scripts/reproduce.py` (v2, 36 min) writes `results/v2/`;
+v1 stays in `results/` (0 of 40 v1 test verdicts change under the new code with `--version v1`). Synthetic data.
+**Every fix was designed after seeing v1 test results; all choices on Manhattan val only; no target changed.**
+
+### Changes
+1. **Calibration speed (Exp 6, implementation):** ridge from 5x5 moment sums; shift the blurred channels (shift and blur commute). Equivalent outputs (tests).
+2. **Splice-seam holes (implementation bug):** `h1_fill="dielectric"` counts holes with dielectric outside the relevance region (image and CAD alike). The CAD-filled splice closed edge pockets into fake holes, i.e. fake KILLER_BRIDGE on nuisance. Val false killers at LER 1.0 / 1.5 / 2.0 nm: 0.08 / 0.15 / 0.27 -> 0.00 / 0.06 / 0.06 (n = 48 each).
+3. **Near-miss rule (selection protocol + statistic):** label-free peak-z (largest energy peak vs the patch's other peaks) and thresholds constrained to <= 5% NEAR_MISS in every val cell (LER 0.5-1.5 nm x grain 0-30%) instead of nominal only.
+4. **CAD reference cache in Module 4:** the seam fix doubled persistence calls (topology 79 -> 142 ms/patch); caching the CAD-only reference restored 76 ms with identical outputs (0 of 60 verdicts changed).
+5. **Exp 2 diagnostic:** verifier on noise-free images (`results/v2/exp2/ceiling.csv`).
+
+### Frozen v2 config (`results/v2/calib/decisions.json`)
+Same field / tau as v1 (template, splice, tau 0.35); val F1 0.864 (v1 0.847), val suppression 1.00 (v1 0.917), fake bridges 0 (v1 4);
+d* 0.078, e* 2.62, z* 5.58; worst val cell NEAR_MISS rate 4.2% (n = 48 per cell, 9 cells), val near-miss recall 0.67 (v1 0.65).
+
+### Results vs targets (test; README v2 table is generated from the CSVs)
+| Exp | v1 | v2 | Met v2 |
+|---|---|---|---|
+| 1 worst cell (sigma 1.5, grain 30%, n = 24) | supp. 46%, bridge 79% | supp. 88% [75, 100], bridge 79% [62, 96] | NO |
+| 2 F1 at dose >= 50 (n = 144) | 0.81-0.85 | 0.81-0.85 | NO |
+| 3 F1 drop curvy / via | -3.7 / -7.3 | -3.7 / -7.3 | yes |
+| 4 unchanged (n = 192) | 94% | 94% [91, 97] | NO (CI contains 95%) |
+| 5 near-miss recall (n = 144) | 92% | 90% [84, 94] at 4% alarm | yes |
+| 6 calibration | 79 ms | 43 ms | yes |
+
+### Why the remaining targets are still missed (one line each, as AGENTS.md section 6 asks)
+- Exp 1: suppression is 21/24 in each sigma 1.5 cell (CI contains 90%); bridge recall at grain 30% is a dim-bridge limit (dark grain on a narrow bridge, P 0.33-0.58 < 1 - tau); all 5 misses per cell are NEAR_MISS, none NUISANCE. A larger tau trades opens and filaments for it (val: open 0.84 -> 0.44, filament false bridges 5 -> 42/96); rejected.
+- Exp 2: not noise. At dose >= 50 notches with 2-3 nm left are called killers 60% of the time, filaments 1-2 nm short 33%; noise-free F1 is 0.84 [0.77, 0.89]. Physics/approach ceiling of a hard threshold at this blur.
+- Exp 4: unchanged; ~0.4 px CAD-template alignment floor + sub-resolution killers flipping with phase.
+
+### Rejected on val (evidence in `scripts/v2_probes/`)
+Energy normalised by LER estimates (over-corrects at low LER); edge-band masking (no effect); larger tau for grain bridges (above).
+
+### Next (scope decisions, not started)
+Model-based local hypothesis test (cut vs neck) on the Module-1 template; consensus-based alignment for Exp 4; seed variance (3 seeds + second CNN run);
+real-data path: independent simulator (Nebula) on the existing testbed wafers, then Carinthia-S for particle/noise checks, then a line/space set with GDS from a partner.

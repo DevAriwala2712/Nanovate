@@ -123,3 +123,18 @@ def test_shifted_sample_gives_same_verdict_as_unshifted(setup):
                                    levels=cal.levels, pre_smooth=1.0, region_tol=8)
             verdicts.append(v)
         assert len(set(verdicts)) == 1, f"layout {lay} {kind}: verdicts changed with shift {verdicts}"
+
+
+def test_peak_z_separates_a_single_defect_from_uniform_roughness():
+    """One isolated energy peak scores a high robust z; many similar peaks (roughness) score low."""
+    from nanovate.modules.align_sdf import peak_z
+    rng = np.random.default_rng(0)
+    rough = np.zeros((200, 200))
+    for y in range(10, 200, 40):
+        for x in range(10, 200, 40):
+            rough[y, x] = 1.0 + 0.05 * rng.standard_normal()
+    one = rough.copy()
+    one[110, 110] = 3.0
+    assert peak_z(one) > 10.0
+    assert peak_z(rough) < 4.0
+    assert peak_z(np.zeros((50, 50))) == 0.0

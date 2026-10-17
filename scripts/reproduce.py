@@ -1,7 +1,10 @@
 """Regenerate every result: config selection (Manhattan val), experiments 1-6, and the README results table.
 
-  python scripts/reproduce.py --quick     # small n, a few minutes, writes results/quick/ (README untouched)
-  python scripts/reproduce.py             # full run, writes results/, rewrites the README table from the CSVs
+  python scripts/reproduce.py --quick     # small n, a few minutes, writes results/v2/quick/ (README untouched)
+  python scripts/reproduce.py             # full v2 run, writes results/v2/, rewrites the README v2 table
+  python scripts/reproduce.py --version v1   # the first, pre-registered run: results/, README v1 table
+
+v1 is the pre-registered first run; v2 adds post-hoc fixes chosen on Manhattan val only (docs/V2_FIXES.md).
 
 One seed in ExpCfg drives everything; non-timing CSVs are bit-identical across runs on the same machine
 (Exp 6 timings are not). The CNN is evaluated from m6_cnn/cnn.pt (trained off-machine by scripts/train_cnn.py).
@@ -29,8 +32,9 @@ def main() -> None:
     ap.add_argument("--skip-select", action="store_true", help="reuse results/[quick/]calib/decisions.json")
     ap.add_argument("--only", default="", help="comma-separated subset, e.g. exp2,exp5")
     ap.add_argument("--update-readme", action="store_true", help="rewrite the README table even for a --quick run")
+    ap.add_argument("--version", default="v2", choices=("v1", "v2"), help="v1 = first pre-registered run, v2 = post-hoc fixes")
     a = ap.parse_args()
-    cfg = ExpCfg.quick() if a.quick else ExpCfg.full()
+    cfg = ExpCfg.quick(a.version) if a.quick else ExpCfg.full(a.version)
     root = select_config.results_root(cfg)
     t0 = time.time()
     if not a.skip_select:
@@ -43,7 +47,7 @@ def main() -> None:
         EXPERIMENTS[name].run(cfg, ctx)
         print(f"   {name} done in {time.time() - t1:.0f}s", flush=True)
     if not a.quick or a.update_readme:
-        report.update_readme("README.md", root)
+        report.update_readme("README.md", root, (report.START, report.END) if a.version == "v2" else (report.V1_START, report.V1_END))
         print("README results table rewritten from", root)
     else:
         print("quick run: README untouched; tables preview ->", root / "tables.md")

@@ -1,0 +1,36 @@
+{
+  "pipeline_cfg": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0775434990066642,
+    "e_star": 2.6189942373880593,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.578071347336651
+  },
+  "criterion": "max killer F1 on Manhattan val (doses 20/50/200) s.t. nuisance suppression >= best percentile-field candidate",
+  "suppression_floor": 0.7083333333333334,
+  "chosen": {
+    "field": "template",
+    "mode": "splice",
+    "tau": 0.35,
+    "n": 288,
+    "n_killer": 144,
+    "n_nuisance": 48,
+    "f1": 0.8639455782312925,
+    "suppression": 1.0,
+    "fake_bridges": 0
+  },
+  "near_miss_budget": 0.05,
+  "version": "v2",
+  "near_miss_constraint": "every val cell sigma (0.5, 1.0, 1.5) x grain (0.0, 0.15, 0.3)",
+  "n_val_patches_per_dose": 96,
+  "quick": false,
+  "seed": 0
+}

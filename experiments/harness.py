@@ -98,8 +98,13 @@ class Context:
     # ---- one sample, all methods ---------------------------------------------------
     def evaluate(self, family: str, split: str, layout_id: int, die: int, kind: str, tcfg: TestbedCfg, *,
                  shift=None, warp: float = 0.0, acq_tag: str = "", layout=None, rule_dose: float | None = None,
-                 methods: tuple = ("verifier", "d2d", "cnn"), pc: PipelineCfg | None = None, tag: str = "") -> dict:
-        """Generate one sample and run the requested methods. ``rule_dose`` picks the D2D rule (default: sample dose)."""
+                 methods: tuple = ("verifier", "d2d", "cnn"), pc: PipelineCfg | None = None, tag: str = "",
+                 noise_free: bool = False) -> dict:
+        """Generate one sample and run the requested methods. ``rule_dose`` picks the D2D rule (default: sample dose).
+
+        ``noise_free`` feeds the verifier the noise-free expected image (same blur, bloom, ramp and shift; no
+        Poisson / read noise): a diagnostic of the verifier's ceiling at this optical resolution, not a result.
+        """
         seed = self.cfg.seed
         L = layout or self.layout(family, split, layout_id, tcfg)
         s = make_sample(family, split, layout_id, die, kind, tcfg, seed, layout=L, shift=shift, acq_tag=acq_tag, warp_amp=warp)
@@ -111,7 +116,7 @@ class Context:
                 row[f"p_{k}"] = float(v)
         cal = self.cal(tcfg)
         if "verifier" in methods:
-            r = verify_patch(s.image, s.cad, cal, self.win, pc or self.pc)
+            r = verify_patch(s.expected if noise_free else s.image, s.cad, cal, self.win, pc or self.pc)
             row.update(verdict=r.verdict, d_b0=r.reason["delta_betti"][0], d_b1=r.reason["delta_betti"][1],
                        bottleneck=r.reason["bottleneck_max"], energy=r.reason["max_sdf_energy"],
                        ms_align=r.timings_ms["align"], ms_energy=r.timings_ms["sdf_energy"], ms_topology=r.timings_ms["topology"],

@@ -45,7 +45,7 @@ fig = plot_walk_through(walks["bridge"])
     md("""
 ## 2. The other classes on the same layout
 An open and a particle (both change the number of conductor components), a harmless nuisance sample (line-edge roughness only),
-and a notch that does not sever the wire (near-miss). Delta-beta decides killer vs not; near-misses need the bottleneck + SDF-energy rule.
+and a notch that does not sever the wire (near-miss). Delta-beta decides killer vs not; near-misses need the bottleneck + SDF-energy + peak-z rule (v2 config, results/v2/calib).
 """),
     code("""
 for kind in ("open", "particle", "nuisance", "notch"):
