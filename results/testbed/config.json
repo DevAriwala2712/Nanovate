@@ -1,0 +1,100 @@
+{
+  "n_layouts_per_cell": 8,
+  "note": "synthetic data",
+  "seed": 0,
+  "testbed": {
+    "K": 32,
+    "defect": {
+      "bridge_max_gap": 25.0,
+      "bridge_radius": [
+        3.0,
+        10.0
+      ],
+      "filament_gap": [
+        1,
+        3
+      ],
+      "filament_radius": [
+        2.0,
+        4.0
+      ],
+      "max_resample": 50,
+      "notch_length": [
+        4.0,
+        10.0
+      ],
+      "notch_remaining": [
+        2,
+        4
+      ],
+      "open_length": [
+        3.0,
+        8.0
+      ],
+      "particle_radius": [
+        3.0,
+        6.0
+      ]
+    },
+    "layout": {
+      "curvy_amp": [
+        4.0,
+        12.0
+      ],
+      "curvy_pitch": 36.0,
+      "curvy_wavelength": [
+        120.0,
+        220.0
+      ],
+      "curvy_width": [
+        14.0,
+        18.0
+      ],
+      "man_cut_gap": [
+        16.0,
+        24.0
+      ],
+      "man_cut_prob": 0.35,
+      "man_half_pitch": 14.0,
+      "man_strap_prob": 0.3,
+      "margin": 16,
+      "min_space": 10.0,
+      "pad": 24,
+      "rail_width": [
+        18.0,
+        24.0
+      ],
+      "tile": 256,
+      "via_pitch": 36.0,
+      "via_round_prob": 0.5,
+      "via_size": [
+        14.0,
+        18.0
+      ]
+    },
+    "nuisance": {
+      "grain_contrast": 0.15,
+      "grain_size": 15.0,
+      "ler_aa": 1.0,
+      "ler_sigma": 1.0,
+      "ler_step": 0.5,
+      "ler_xi": 20.0,
+      "min_speck": 3
+    },
+    "sem": {
+      "a0": 0.25,
+      "a1": 0.45,
+      "a2": 0.9,
+      "bloom_sat": 0.35,
+      "charge_amp": 0.06,
+      "dose": 50.0,
+      "max_shift": 3.0,
+      "read_noise": 1.0,
+      "sigma_beam": [
+        1.6,
+        1.2
+      ],
+      "sigma_edge": 1.3
+    }
+  }
+}
