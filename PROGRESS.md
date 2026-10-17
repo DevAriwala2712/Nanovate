@@ -1,6 +1,6 @@
 # PROGRESS.md — Nanovate SEM Topology Defect Verifier
 
-Status: **Milestone M1 complete and green.**
+Status: **M1 complete. M2 code + tests green (45 passed); M2 early-risk probe and field/tau choice still open.**
 Contract: `AGENTS.md` (authoritative precedence: AGENTS.md > v4.0 Part A > protocol > v3.0).
 All results reported here are from **synthetic data**.
 
@@ -115,3 +115,20 @@ All results reported here are from **synthetic data**.
   - Lifetime threshold filtering $\tau$.
   - Bottleneck distance against reference diagram.
   - Reason payload dictionary and unit tests.
+
+
+---
+
+## Milestone M2 (in progress): Module 4 topology verdict
+
+### Done
+- `modules/fields.py` (options a: percentile, b: calibrated levels; b uses **oracle** levels until M3), `modules/topology.py` (GUDHI cubical PH, Betti at lifetime >= tau, bottleneck H0/H1, verdict ladder + reason dict). NEAR_MISS is disabled until SDF energy exists (M4).
+- `pytest -q`: 45 passed.
+
+### Surprises / bugs found while getting green
+1. **Verifier ignored the label's margin rule (Bug #5 in the verifier).** A plain crop counted wire slivers (5 px and 27 px) pushed across the window edge by LER, giving a false KILLER_OPEN/PARTICLE on a nuisance sample (d_beta0 = +2) although the ground-truth label is nuisance. Fix: compute on the whole tile with the field replaced by CAD outside `relevance_region(cad, win)`, the same region the labels use.
+2. **Bug-4 test premise was wrong.** A bridge of conductor level c merges wires at filtration 1 - c, so it is detected iff c > 1 - tau. At tau = 0.45 a 0.5-contrast bridge is *missed*; the test now uses c = 0.6 (tau 0.35 misses, 0.45 detects). Consequence: tau directly trades dim-bridge recall against bloom fake-bridges.
+
+### Not yet done (M2 exit criteria)
+- False-killer rate vs dose for field options (a)/(b) on Manhattan val; choose field and tau/d*/e* on Manhattan val only, document why.
+- Tests so far run on noise-free expected images and a few LER samples only; no noisy-image numbers measured yet.
