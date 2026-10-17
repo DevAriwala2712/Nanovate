@@ -161,3 +161,49 @@ Candidate next steps (not done): (a) replace splicing by counting only persisten
 ### Attempt: region-restricted persistence pairs via GUDHI cofaces -- blocked (no code changed)
 `CubicalComplex.cofaces_of_persistence_pairs()` raises for the `vertices=` constructor ("only makes sense for a complex initialized from the values of the top-dimensional cells"). The top-dimensional-cell constructor makes sublevel sets unions of closed squares, i.e. 8-connected conductor, which reverses the project's pinned convention (conductor 4-connected, dielectric 8-connected; corner touch must not short). Using it would need a duality re-derivation (conductor components via H1/H0 of the dielectric side, with tile-border effects) and re-validation of every M2 test.
 Further, localisation is ill-posed on the CAD reference: CAD is a binary plateau, so the death vertex of a wire that merges at the dielectric level is an arbitrary tie-break, while a wire's birth vertex (its max-P pixel) lies anywhere along the wire; only H1 (holes) and finite H0 merges in the image have a stable location.
+
+### Region-local pairs (`modules/localpers.py`) vs splice -- probe comparison (`scripts/compare_region_modes.py`)
+Implemented own union-find H0 + dual union-find H1 (GUDHI cofaces unavailable for the vertex construction); `verify_topology(region_mode="pairs"|"splice")`. Validated: finite H0/H1 intervals equal GUDHI's exactly (incl. tied values); binary counts equal `betti_local` on testbed samples for all 6 kinds. 66 tests pass.
+Comparison: Manhattan val, seed 0, oracle levels, synthetic; n = 16 nuisance, 48 killer per cell (false-killer granularity 1/16 = 0.06). Outputs `results/m2_region_modes/{rows,summary}.csv`. Dose 5/10 not rerun (earlier probe: unusable).
+Results (calibrated field unless noted):
+1. **`region_tol` matters more than the counting mode.** With pre_smooth 1, tau 0.45, false-killer at dose 20-200: splice tol 4 = 0.31-0.38 -> tol 8 = 0.06 (flat); pairs tol 4 = 0.25-0.31 -> tol 8 = 0.06-0.19.
+2. **Pairs is not a clear win.** With smoothing, splice tol 8 has the lowest, dose-flat false-killer (0.06), pairs tol 8 is slightly higher (0.06-0.19) but with higher killer-correct (0.60-0.73 vs 0.58-0.65). Without smoothing at dose 200, pairs wins (tau 0.55, tol 8: false-killer 0.00 / killer-correct 0.71 vs splice 0.12 / 0.62), but unsmoothed fields flag everything at dose <= 100 in both modes.
+3. Percentile + smooth 1 is not robust: at tau 0.55 pairs false-killer is 0.94 at dose 20 while splice is 0.50-0.69.
+4. Killer-correct stays <= ~0.79 everywhere, consistent with the sub-resolution killers found in the diagnosis (not a counting problem). Pairs tol 8 false killers at dose 200 (3/16) are not yet explained.
+Not decided: field, tau, region_tol, region_mode (defaults unchanged: splice, tol 4). Next evidence needed: Module 1 levels (replace oracle), Module 2 denoising (replace pre_smooth), and classification of sub-resolution killers.
+
+---
+
+## Milestone M3: Module 1 scribe calibration (`modules/calibration.py`, `tests/test_calibration.py`, `scripts/calibration_report.py`)
+Status: implemented; `pytest -q` = 75 passed (9 new). Results in `results/m3_calibration/`. Synthetic data; Manhattan/curvy/via **val** splits; seeds 0-2.
+
+### Built
+5-feature closed-form ridge (features standardised, intercept unpenalised) on the 3 scribe patches; levels mu_diel = w0, mu_cond = w0+w1+w2; noise model Var = alpha*mu + sigma2; generalised Anscombe; optional per-patch ramp removal (off by default); sub-pixel scribe registration (`estimate_shift`, sign tested against a known shift).
+
+### Measured (n = 3 scribe seeds per dose; transfer n = 18 val patches per family/dose cell)
+| Quantity | Result |
+|---|---|
+| mu_diel / mu_cond vs simulator's interior levels | within 0.4% at doses 20-200 (large flat interiors pin them) |
+| Scribe-to-die transfer error \|\|T(C) - E[I]\|\|/\|\|E[I]\|\| (registered) | curvy 0.107, manhattan 0.118, via 0.124; independent of dose (relative) |
+| same, no scribe registration | 0.121 / 0.134 / 0.139 (registration helps ~1.5 points) |
+| same, with per-patch ramp removal | 0.105 / 0.116 / 0.122 (gain 0.001-0.003: not worth enabling) |
+| Noise gain alpha (true 1) | 0.95-1.00 across doses |
+| Read variance sigma2 (true 1) | 0.7-1.4 (noisy across seeds; 0.0-2.05 per seed) |
+| Calibration time, 3 patches, CPU | 80 ms with registration; 27 ms without. **Target < 50 ms (Exp 6) is MISSED with registration**, met without |
+| M2 verdicts, calibrated vs oracle levels (calibrated field, smooth 1, splice, tol 8, tau 0.45; not tuned) | false-killer 0.06 for both at every dose; killer-correct 0.60-0.67 vs 0.58-0.65 (n = 16 / 48 per cell). Calibrated levels replace the oracle with no measurable loss |
+
+Transfer error is 11-12%, i.e. not ~0: the deliberate model mismatch (anisotropic beam, saturating bloom, grain, ramp) keeps the 5-feature span from being circular (risk R1 not triggered).
+
+### Rulings / surprises
+1. **Noise model: neighbour differences, not binned residuals** (deviates from PLAN M3 wording). A plain residual fit absorbed charging ramp, grain and template error: alpha rose from 1.07 to 1.88 with dose (true 1). Horizontal neighbour differences in flat pixels (|grad G1*C| < 1e-3) cancel smooth structure; alpha now 0.95-1.00. Test builds a ramp + blocky-grain case where the plain fit is > 1.5.
+2. **Binning bug found by profiling.** Predicted means form exact plateaus, quantile edges collapsed, and a "few distinct values" fallback created ~14k bins: 0.78 of 0.86 s of calibration time. Fix: fallback only for <= 4*nbins distinct means. (An earlier guess that cubic `ndi.shift` was the cost was wrong; I still replaced it by a bilinear shift of the binary CAD before blurring, which is cheaper.)
+3. **Registration helper lives in calibration.py** (plan had alignment only in Module 3). Scribe patches carry random sub-pixel shifts; without registering them the fit is biased (transfer error +1.5 points). Plain mean-removed cross-correlation (`normalization=None`): phase whitening failed on smooth/noisy inputs, a Hann window hurt on edge-touching features. Module 3 owns in-die alignment.
+4. Test change, not a code change: the synthetic ramp in the neighbour-difference test was made zero-mean within each half, so the template mean stays right (a ramp with nonzero per-region mean shifts the true mean away from the template and inflates the slope; that is a mean-assignment effect, not noise).
+
+### Caveats
+- Transfer error is measured at shift 0 against the noise-free expected image (includes the charging ramp). With real in-die shifts this needs Module 3.
+- Levels are calibrated at the same dose as the die patches; the dose sweep (Exp 2) must recalibrate per dose.
+- sigma2 is poorly determined at high dose (read noise is small next to shot noise).
+
+### Next
+M4: Module 3 (sub-pixel alignment with sign test, CAD SDF tension energy), which also feeds the near-miss rule in Module 4 and the shift-sensitivity seen in the M2 probe.
