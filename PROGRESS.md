@@ -265,3 +265,13 @@ Status: implemented; `pytest -q` = 106 passed (10 new). Results in `results/m5_l
 
 ### Next
 M6 baselines: die-to-die (single and double difference) and the Manhattan-only CNN, with thresholds chosen on Manhattan val only.
+
+---
+
+## Milestone M6 (in progress): baselines (`baselines/die_to_die.py`, `baselines/cnn.py`, `scripts/baselines_report.py`)
+Status: code + tests done (11 new tests pass: D2D flags an obvious bridge, not a clean die or re-acquisition; double-difference cancels a defect in one reference; val-only threshold fit refuses other splits; CNN forward shape, seeded determinism, tiny-batch overfit, val-only threshold). **Baseline numbers are NOT final.**
+D2D aligns target and references with the Module-3 aligner and applies the Module-1 GAT (z-units), so alignment and noise scaling are not confounds.
+
+First full run on Manhattan val (synthetic; 50% killer prevalence, so "flag everything" scores F1 = 0.67), both baselines degenerate:
+- **D2D with one pooled rule over doses 20/50/200**: F1 0.68, nuisance false alarm 0.71 overall; at dose 50 and 200 it flags every clean die. LER differences between dies grow relative to shot noise as dose rises, so a z-threshold cannot transfer across doses. Fix in the script (not yet rerun): fit the rule per dose (recipe tuned per condition, the best case for D2D), keep the pooled rule as a comparison.
+- **CNN**: training loss 0.733 -> 0.701 (chance), i.e. untrained: 10 epochs x 18 steps on 576 mixed-dose samples is too few steps to judge. A longer schedule is to be trained off this machine (Colab); until then no CNN number is reported.
