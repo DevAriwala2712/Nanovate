@@ -132,3 +132,32 @@ All results reported here are from **synthetic data**.
 ### Not yet done (M2 exit criteria)
 - False-killer rate vs dose for field options (a)/(b) on Manhattan val; choose field and tau/d*/e* on Manhattan val only, document why.
 - Tests so far run on noise-free expected images and a few LER samples only; no noisy-image numbers measured yet.
+
+### M2 early-risk probe (`scripts/probe_m2.py`, Manhattan val only, seed 0, oracle levels, synthetic data)
+Sweep: dose {5,10,20,50,100,200} e-/px x field {percentile, calibrated} x pre_smooth {0, 1 px} x tau 0.30-0.70.
+Cells: n = 16 nuisance, n = 48 killer (8 layouts x 2 dies x {bridge, open, particle}) per (field, smooth, tau, dose). Small n: indicative only, no CIs yet.
+Outputs: `results/m2_probe/{probe.csv, summary.csv, config.json}`. No tau chosen yet.
+
+Findings (measured):
+1. **Unsmoothed fields are unusable at dose <= 50**: calibrated/no-smooth false-killer rate is 1.0 across the tau grid (killer-correct 0.33 = everything flagged); shot-noise pixels form long-lived components. Percentile/no-smooth is similar until dose >= 100. Some denoising before Module 4 (Module 2, or at least pre-smoothing) is required, not optional.
+2. **No tau gives low false-killer and high recall together.** Calibrated, pre_smooth = 1, dose >= 50: false-killer falls from ~0.44 (tau 0.30-0.40) to ~0.06-0.12 (tau 0.65-0.70), while killer-correct falls from ~0.73 to ~0.12-0.44. At dose 5-10 the false-killer rate is 0.12-1.0 for every tau.
+3. **Failures are systematic, not noise.** At dose 200, calibrated, smooth 1, tau 0.5: bridge recall 16/16, but open correct 8/16 (6 called NUISANCE, 2 called BRIDGE) and particle correct 7/16 (7 NUISANCE, 2 BRIDGE); nuisance false-killer 5/16, all in layouts 1, 2, 6, 7 (layouts 0, 3, 4, 5 are clean at dose >= 50).
+4. Percentile + pre_smooth 1 reaches false-killer 0.00 at dose 50 / tau 0.55 but killer-correct there is only 0.65, and it degrades again at dose >= 100. Not a robust choice.
+
+Not yet explained (to investigate before choosing a field/tau): why opens/particles are missed and why layouts 1, 2, 6, 7 raise false killers (candidates: bloom/blur filling short cuts and narrow gaps, shift vs. relevance-region mismatch, charging ramp vs. oracle levels). The Bug #4 trade-off is confirmed on the full pipeline: tau cannot be a single fixed constant across dose.
+
+### M2 diagnosis of probe failures (evidence from scratch scripts; Manhattan val, dose 200, tau 0.5, oracle levels, n = 16 nuisance / 16 open / 16 particle)
+Evaluated on the noise-free `expected` image first, so these are not shot-noise effects. Four separate mechanisms:
+1. **Optical resolution limit (not a verifier bug).** Particles whose gap to a wire is ~3-4 px merge with the wire at P > 0.5 (e.g. layout 0 die 0: isolated 57-px particle in W, 4 px from a wire, fused with it in the image). Opens with cut length <= ~4.5 px are not resolved (P at the cut stays above 1 - tau). Roughly 6/16 opens and 7/16 particles are missed on this basis; some ground-truth "killers" are simply sub-resolution at this blur/bloom.
+2. **`pre_smooth = 1` makes (1) worse.** Opens of length 3.7-4.9 px are detected noise-free with no smoothing and lost with sigma = 1 (layouts 0, 3, 4, 7). Smoothing is needed at low dose, so denoising must come from Module 2 (low-rank stack), not a blur on top of the beam blur.
+3. **Region seam is narrower than the optical reach.** `relevance_region(tol=4)` keeps only 4 px clear of out-of-window wires, but blur + bloom reach ~5 px and the acquisition shift is up to 3 px, so a neighbouring wire leaks into the region (layout 7 die 0, shift 0: 5-px sliver at row 243 with no partner in W). Nuisance false killers with `region_tol` (noise-free, 16 samples): tol 4: 5 random-shift / 3 zero-shift; tol 6: 3 / 2; tol 8: 1 / 1; tol 10: 2 / 1. Not eliminated.
+4. **Splicing image into CAD at the region boundary creates artifacts.** At tol 8-10 the remaining false killers are new holes (d_beta1 = +1..+4), consistent with a seam between image content and CAD fill. Delta-beta is also a *net* count, so a missed particle (+1) and a spurious merge (-1) can cancel to (0, 0), hiding errors.
+Shift alone flips verdicts (layouts 1, 2, 6 false killers appear only with the random shift; 5, 7 flip the other way), i.e. Module 3 alignment matters for the verdict, as Experiment 4 anticipates.
+Layout 5 die 1 (shift 0, d_beta1 = +1) has no component mismatch at P > 0.5 and is unexplained.
+
+Open code change: `verify_topology(..., region_tol=4)` parameter added (default unchanged; no tol chosen).
+Candidate next steps (not done): (a) replace splicing by counting only persistence pairs whose birth/death cell lies inside the relevance region (GUDHI cofaces), no seam; (b) choose `region_tol` and tau jointly on Manhattan val after Module 3/2 exist; (c) report sub-resolution killers separately (resolution limit) instead of counting them against the verifier.
+
+### Attempt: region-restricted persistence pairs via GUDHI cofaces -- blocked (no code changed)
+`CubicalComplex.cofaces_of_persistence_pairs()` raises for the `vertices=` constructor ("only makes sense for a complex initialized from the values of the top-dimensional cells"). The top-dimensional-cell constructor makes sublevel sets unions of closed squares, i.e. 8-connected conductor, which reverses the project's pinned convention (conductor 4-connected, dielectric 8-connected; corner touch must not short). Using it would need a duality re-derivation (conductor components via H1/H0 of the dielectric side, with tile-border effects) and re-validation of every M2 test.
+Further, localisation is ill-posed on the CAD reference: CAD is a binary plateau, so the death vertex of a wire that merges at the dielectric level is an arbitrary tie-break, while a wire's birth vertex (its max-P pixel) lies anywhere along the wire; only H1 (holes) and finite H0 merges in the image have a stable location.

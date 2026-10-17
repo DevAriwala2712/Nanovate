@@ -20,6 +20,7 @@ import numpy as np
 from ..config import SEMCfg
 from ..topo_utils import Window, relevance_region
 from .fields import build_field
+from .localpers import local_persistence
 
 # Verdict strings
 KILLER_BRIDGE = "KILLER_BRIDGE"
@@ -107,6 +108,8 @@ def verify_topology(
     e_star: float = float("inf"),
     sdf_energy: float | None = None,
     singleton: bool = True,
+    region_tol: int = 4,
+    region_mode: str = "splice",
 ) -> tuple[str, dict]:
     """Verify topology of SEM patch against CAD reference (AGENTS.md §5.2).
 
@@ -123,6 +126,11 @@ def verify_topology(
         e_star: SDF tension energy threshold for NEAR_MISS (default inf).
         sdf_energy: Computed SDF energy (from Module 3; None until M4 lands).
         singleton: True if patch is evaluated without K peers.
+        region_tol: px by which the relevance region keeps clear of CAD components outside
+            the window; should exceed optical reach (blur + bloom) plus residual shift.
+        region_mode: 'splice' (field replaced by CAD outside the region, GUDHI on the tile) or
+            'pairs' (no splice: region-local union-find persistence counts only features whose
+            component reaches the region; needs ``win``).
 
     Returns:
         (verdict, reason_dict)
@@ -136,28 +144,31 @@ def verify_topology(
         pre_smooth=pre_smooth,
     )
 
-    # 2. Margin handling (AGENTS.md §7.5): topology is computed on the whole tile, and the
-    # field is replaced by the CAD outside the CAD-derived relevance region -- the same
-    # region the ground-truth labels use. Wire fragments created at the window edge by
-    # LER/shift therefore cannot add or remove components; a plain crop would count them.
-    if win is not None:
-        reg = relevance_region(cad, win)
-        f_eval = np.where(reg, field, cad.astype(float))
+    # 2-5. Margin handling (AGENTS.md §7.5) and Betti / bottleneck computation.
+    if win is not None and region_mode == "pairs":
+        reg = relevance_region(cad, win, tol=region_tol)
+        lp_img = local_persistence(field, reg)
+        lp_ref = local_persistence(cad.astype(float), reg)
+        beta_img = lp_img.betti(tau)
+        beta_ref = lp_ref.betti(tau)
+        (d0_i, d1_i), (d0_r, d1_r) = lp_img.diagrams(), lp_ref.diagrams()
+        bot0, bot1 = compute_bottleneck_distances(d0_i, d1_i, d0_r, d1_r)
     else:
-        f_eval = field
-    c_eval = cad
-
-    # 3. Compute persistence diagrams for image and CAD
-    diag0_img, diag1_img = compute_persistence_intervals(f_eval)
-    diag0_ref, diag1_ref = compute_persistence_intervals(c_eval.astype(float))
-
-    # 4. Extract Betti numbers with lifetime >= tau
-    beta_img = betti_from_intervals(diag0_img, diag1_img, tau)
-    beta_ref = betti_from_intervals(diag0_ref, diag1_ref, tau)
+        if region_mode not in ("splice", "pairs"):
+            raise ValueError(f"unknown region_mode {region_mode!r}")
+        if win is not None:
+            # Field replaced by the CAD outside the label's relevance region, so wire
+            # fragments created at the window edge cannot add or remove components.
+            reg = relevance_region(cad, win, tol=region_tol)
+            f_eval = np.where(reg, field, cad.astype(float))
+        else:
+            f_eval = field
+        diag0_img, diag1_img = compute_persistence_intervals(f_eval)
+        diag0_ref, diag1_ref = compute_persistence_intervals(cad.astype(float))
+        beta_img = betti_from_intervals(diag0_img, diag1_img, tau)
+        beta_ref = betti_from_intervals(diag0_ref, diag1_ref, tau)
+        bot0, bot1 = compute_bottleneck_distances(diag0_img, diag1_img, diag0_ref, diag1_ref)
     delta_beta = (beta_img[0] - beta_ref[0], beta_img[1] - beta_ref[1])
-
-    # 5. Bottleneck distance against reference diagram
-    bot0, bot1 = compute_bottleneck_distances(diag0_img, diag1_img, diag0_ref, diag1_ref)
     bot_max = max(bot0, bot1)
 
     # 6. Verdict determination
@@ -179,6 +190,8 @@ def verify_topology(
         "d_star": d_star,
         "e_star": e_star,
         "singleton": singleton,
+        "region_mode": region_mode,
+        "region_tol": region_tol,
         "field_meta": meta,
     }
     return verdict, reason
