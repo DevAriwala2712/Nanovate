@@ -48,6 +48,11 @@ drives everything: non-timing CSVs are identical across runs on the same machine
 The CNN is trained off-machine (`scripts/train_cnn.py`, `notebooks/train_cnn_colab.ipynb`) and only evaluated here.
 Per-milestone measurements, surprises and missed targets are in `PROGRESS.md`; the design in `PLAN.md`.
 
+**Demo.** `notebooks/demo.ipynb` walks one synthetic tile through every stage (calibration, alignment, field, persistence diagrams,
+SDF energy) and prints each verdict with its reason, for a bridge, an open, a particle, a nuisance sample and a near-miss, plus the
+singleton-vs-stack distinction. It is a thin caller of `src/nanovate/demo.py` (tested; `tests/test_demo.py` executes every cell without
+jupyter). Regenerate the notebook with `python scripts/make_demo_notebook.py`. The tiles are illustrations from the validation split, not results.
+
 ## Results
 
 <!-- RESULTS:START -->
@@ -156,9 +161,9 @@ F1 drop vs Manhattan (points, 95% CI): Verifier (ours) -> curvy: -3.7 [-12.7, +5
   and was trained off-machine on a GPU (not bit-reproducible).
 
 ## Review UI
-`frontend/index.html` views testbed samples with their Module 4 verdicts, ground-truth labels, and patch layers (CAD, W, SEM, conductor field).
+`frontend/index.html` views testbed samples with their verdicts, ground-truth labels, Module 4 reasons (Δβ, bottleneck, SDF energy) and patch layers (CAD, W, SEM, conductor field).
 ```
-python scripts/export_ui.py                      # writes frontend/data/run.js (synthetic data)
-python3 -m http.server --directory frontend      # or just open frontend/index.html
+python scripts/export_ui.py                      # writes frontend/data/run.js from the current pipeline (synthetic data)
+python3 -m http.server --directory frontend      # then open http://localhost:8000
 ```
-The export predates Modules 1–3: it uses Module 4 with its defaults (`--tau`, `--field`, `--pre-smooth`), so SDF energy, calibration and low-rank outputs show as unavailable.
+The export runs each sample through the real pipeline with the verifier configuration frozen on Manhattan val (`results/calib/decisions.json`), at one dose (`--dose`, default 50 e-/px).
