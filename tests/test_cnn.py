@@ -3,7 +3,16 @@ import numpy as np
 import pytest
 import torch
 
-from nanovate.baselines.cnn import CnnCfg, ResNetSmall, pick_threshold, predict_proba, prepare, train_cnn
+from nanovate.baselines.cnn import (
+    CnnCfg,
+    ResNetSmall,
+    load_cnn,
+    pick_threshold,
+    predict_proba,
+    prepare,
+    save_cnn,
+    train_cnn,
+)
 
 
 def _toy(n=8, seed=0, size=256):
@@ -57,3 +66,21 @@ def test_threshold_only_on_manhattan_val():
         pick_threshold(p, y, split="val", family="via")
     t = pick_threshold(p, y, split="val", family="manhattan")
     assert 0.2 < t <= 0.8
+
+
+def test_save_load_roundtrip_gives_identical_predictions(tmp_path):
+    imgs, cads, labels = _toy(4)
+    cfg = CnnCfg(epochs=1, batch=4, seed=1, width=8)
+    model, hist = train_cnn(imgs, cads, labels, cfg)
+    path = tmp_path / "cnn.pt"
+    save_cnn(model, cfg, hist, path)
+    loaded, cfg2, hist2 = load_cnn(path)
+    assert cfg2 == cfg and hist2["loss"] == hist["loss"]
+    assert np.array_equal(predict_proba(model, imgs, cads), predict_proba(loaded, imgs, cads))
+
+
+def test_device_option_defaults_to_cpu_and_unknown_device_fails():
+    assert CnnCfg().device == "cpu"
+    imgs, cads, labels = _toy(2, size=64)
+    with pytest.raises((RuntimeError, AssertionError, ValueError)):
+        train_cnn(imgs, cads, labels, CnnCfg(epochs=1, batch=2, device="not-a-device"))

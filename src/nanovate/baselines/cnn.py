@@ -23,6 +23,7 @@ class CnnCfg:
     seed: int = 0
     width: int = 16
     augment: bool = True   # random flips / transpose, applied jointly to image and CAD
+    device: str = "cpu"    # 'cpu' (bit-reproducible) or 'cuda' (Colab; results then not bit-identical)
 
 
 class _Block(nn.Module):
@@ -81,9 +82,10 @@ def train_cnn(images: np.ndarray, cads: np.ndarray, labels: np.ndarray, cfg: Cnn
     """Train on the given (Manhattan train) patches. Returns (model, history). Deterministic in cfg.seed."""
     torch.manual_seed(cfg.seed)
     rng = np.random.default_rng(cfg.seed)
-    model = ResNetSmall(cfg.width)
+    dev = torch.device(cfg.device)
+    model = ResNetSmall(cfg.width).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
-    y = torch.from_numpy(np.asarray(labels, dtype=np.float32))
+    y = torch.from_numpy(np.asarray(labels, dtype=np.float32)).to(dev)
     pos_w = torch.tensor(float((y == 0).sum()) / max(float((y == 1).sum()), 1.0))
     n = len(y)
     hist: dict = {"loss": [], "first_batch_loss": None}
@@ -96,6 +98,7 @@ def train_cnn(images: np.ndarray, cads: np.ndarray, labels: np.ndarray, cfg: Cnn
             xb = prepare(images[idx], cads[idx])
             if cfg.augment:
                 xb = _augment(xb, rng)
+            xb = xb.to(dev)
             loss = F.binary_cross_entropy_with_logits(model(xb), y[idx], pos_weight=pos_w)
             if hist["first_batch_loss"] is None:
                 hist["first_batch_loss"] = float(loss.detach())
@@ -104,15 +107,31 @@ def train_cnn(images: np.ndarray, cads: np.ndarray, labels: np.ndarray, cfg: Cnn
             opt.step()
             total += float(loss.detach()) * len(idx)
         hist["loss"].append(total / n)
-    return model, hist
+    return model.cpu(), hist
 
 
 @torch.no_grad()
 def predict_proba(model: ResNetSmall, images: np.ndarray, cads: np.ndarray, batch: int = 64) -> np.ndarray:
-    """Killer probability per patch (eval mode)."""
+    """Killer probability per patch (eval mode, on the model's device)."""
     model.eval()
-    out = [torch.sigmoid(model(prepare(images[s:s + batch], cads[s:s + batch]))).numpy() for s in range(0, len(images), batch)]
+    dev = next(model.parameters()).device
+    out = [torch.sigmoid(model(prepare(images[s:s + batch], cads[s:s + batch]).to(dev))).cpu().numpy()
+           for s in range(0, len(images), batch)]
     return np.concatenate(out)
+
+
+def save_cnn(model: ResNetSmall, cfg: CnnCfg, history: dict, path) -> None:
+    """Save weights (CPU), the training config and the loss history to one file."""
+    torch.save({"state": {k: v.cpu() for k, v in model.state_dict().items()}, "cfg": cfg.__dict__, "history": history}, path)
+
+
+def load_cnn(path) -> tuple[ResNetSmall, CnnCfg, dict]:
+    """Inverse of ``save_cnn``. Returns (model on CPU, cfg, history)."""
+    blob = torch.load(path, map_location="cpu", weights_only=False)
+    cfg = CnnCfg(**blob["cfg"])
+    model = ResNetSmall(cfg.width)
+    model.load_state_dict(blob["state"])
+    return model, cfg, blob["history"]
 
 
 def pick_threshold(probs: np.ndarray, labels: np.ndarray, split: str, family: str) -> float:

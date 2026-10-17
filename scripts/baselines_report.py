@@ -18,14 +18,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from nanovate.baselines.cnn import CnnCfg, pick_threshold, predict_proba, train_cnn
+from nanovate.baselines.cnn import CnnCfg, load_cnn, pick_threshold, predict_proba, train_cnn
+from nanovate.baselines.data import TRAIN_DOSES, make_cnn_train_set, with_dose
 from nanovate.baselines.die_to_die import d2d_flag, d2d_score, d2d_stats, fit_d2d_rule
 from nanovate.config import TestbedCfg, save_config
 from nanovate.modules.calibration import calibrate
 from nanovate.testbed.dataset import KINDS, get_layout, make_sample, window
 from nanovate.testbed.scribe import make_scribe_patches
 
-TRAIN_DOSES = (5, 10, 20, 35, 50, 100, 200)
 FIT_DOSES = (20, 50, 200)
 SIGMAS, THETAS = (0.0, 1.0, 2.0), (3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0)
 AREAS = (2, 4, 6, 8, 12, 16, 24, 32, 48, 64)
@@ -37,36 +37,29 @@ def f1(pred: np.ndarray, y: np.ndarray) -> float:
     return 2 * tp / max(2 * tp + float((pred & ~y).sum()) + float((~pred & y).sum()), 1.0)
 
 
-def with_dose(cfg: TestbedCfg, dose: float) -> TestbedCfg:
-    return dataclasses.replace(cfg, sem=dataclasses.replace(cfg.sem, dose=float(dose)))
-
-
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--out", default="results/m6_baselines")
+    ap.add_argument("--cnn-weights", default=None, help="evaluate weights from scripts/train_cnn.py instead of training here")
     a = ap.parse_args()
     n_train_lay, dies_train, epochs, n_val_lay = (6, 1, 4, 3) if a.quick else (24, 4, 10, 8)
     base = TestbedCfg()
     win = window(base)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(SEED)
 
-    # ---- CNN training data: Manhattan train, random dose per sample ----
-    t0 = time.time()
-    imgs, cads, ys = [], [], []
-    for lay in range(n_train_lay):
-        for die in range(dies_train):
-            for kind in KINDS:
-                dose = float(rng.choice(TRAIN_DOSES))
-                s = make_sample("manhattan", "train", lay, die, kind, with_dose(base, dose), SEED)
-                imgs.append(s.image); cads.append(s.cad); ys.append(s.killer)
-    imgs, cads, ys = np.stack(imgs), np.stack(cads), np.array(ys)
-    print(f"train data: n={len(ys)} (killers {int(ys.sum())}) in {time.time() - t0:.0f}s", flush=True)
-    t0 = time.time()
-    model, hist = train_cnn(imgs, cads, ys, CnnCfg(epochs=epochs, seed=SEED))
-    print(f"cnn trained in {time.time() - t0:.0f}s, loss {hist['loss'][0]:.3f} -> {hist['loss'][-1]:.3f}", flush=True)
+    # ---- CNN: load weights trained elsewhere, or train here (CPU; slow) ----
+    if a.cnn_weights:
+        model, cnn_cfg, hist = load_cnn(a.cnn_weights)
+        print(f"loaded CNN weights {a.cnn_weights} (epochs {cnn_cfg.epochs}, final loss {hist['loss'][-1]:.3f})", flush=True)
+    else:
+        t0 = time.time()
+        imgs, cads, ys, _ = make_cnn_train_set(n_train_lay, dies_train, seed=SEED)
+        print(f"train data: n={len(ys)} (killers {int(ys.sum())}) in {time.time() - t0:.0f}s", flush=True)
+        t0 = time.time()
+        model, hist = train_cnn(imgs, cads, ys, CnnCfg(epochs=epochs, seed=SEED))
+        print(f"cnn trained in {time.time() - t0:.0f}s, loss {hist['loss'][0]:.3f} -> {hist['loss'][-1]:.3f}", flush=True)
 
     # ---- Manhattan val items at FIT_DOSES ----
     rows, st_single, st_double, v_img, v_cad = [], [], [], [], []
