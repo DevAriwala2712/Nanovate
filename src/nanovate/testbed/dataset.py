@@ -19,7 +19,7 @@ from ..topo_utils import Window
 from .labels import LABEL_OF_KIND, consistent, topology_label
 from .layouts import Layout, make_layout
 from .perturb import DEFECTS, apply_ler, grain_field
-from .sem import acquire, charging_ramp, expected_image
+from .sem import acquire, charging_ramp, expected_image, warp_field
 
 KINDS = ("nuisance", "bridge", "open", "particle", "notch", "filament")
 
@@ -110,14 +110,22 @@ def render(
     sem: SEMCfg,
     rng: np.random.Generator,
     shift: tuple[float, float] | None = None,
+    warp_amp: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray, tuple[float, float]]:
-    """Acquire one SEM image of ``wafer``. Returns (image, expected, shift) in e-/px."""
+    """Acquire one SEM image of ``wafer``. Returns (image, expected, shift) in e-/px.
+
+    ``warp_amp`` (px) adds a smooth random geometric warp (Exp 4); 0 leaves every random stream and
+    output bit-identical to the unwarped render.
+    """
     if shift is None:
         shift = tuple(float(v) for v in rng.uniform(-sem.max_shift, sem.max_shift, 2))
     if max(abs(shift[0]), abs(shift[1])) > layout.pad - 4:
         raise ValueError("shift exceeds rendered context (pad)")
     ramp = charging_ramp((layout.tile, layout.tile), sem.charge_amp, rng)
-    I_bar = expected_image(wafer.W_canvas, wafer.grain_canvas, sem, layout.pad, layout.tile, shift, ramp)
+    warp = None
+    if warp_amp > 0:  # separate stream: drawing it must not disturb the ramp / noise draws
+        warp = warp_field(wafer.W_canvas.shape, warp_amp, np.random.default_rng(int(rng.integers(2**32))))
+    I_bar = expected_image(wafer.W_canvas, wafer.grain_canvas, sem, layout.pad, layout.tile, shift, ramp, warp)
     img = acquire(I_bar, sem, rng)
     return img, (sem.dose * I_bar).astype(np.float32), shift
 
@@ -133,11 +141,12 @@ def make_sample(
     layout: Layout | None = None,
     shift: tuple[float, float] | None = None,
     acq_tag: str = "",
+    warp_amp: float = 0.0,
 ) -> Sample:
     """Generate one labelled sample (deterministic in all arguments)."""
     layout = layout or get_layout(family, split, layout_id, cfg, seed)
     wafer = make_wafer(layout, kind, cfg, child_rng(seed, "geom", family, split, layout_id, die, kind))
-    img, exp, sh = render(layout, wafer, cfg.sem, child_rng(seed, "acq", family, split, layout_id, die, acq_tag), shift)
+    img, exp, sh = render(layout, wafer, cfg.sem, child_rng(seed, "acq", family, split, layout_id, die, acq_tag), shift, warp_amp)
     p, t = layout.pad, layout.tile
     return Sample(
         family, split, layout_id, die, kind, LABEL_OF_KIND[kind], wafer.topo,

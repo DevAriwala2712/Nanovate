@@ -1,0 +1,55 @@
+{
+  "data": "synthetic",
+  "dose": 50.0,
+  "exp_cfg": {
+    "dies": 2,
+    "doses": [
+      5,
+      10,
+      20,
+      35,
+      50,
+      100,
+      200
+    ],
+    "exp1_grains": [
+      0.0,
+      0.1,
+      0.2,
+      0.3
+    ],
+    "exp1_sigmas": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "exp4_shift": 8.0,
+    "exp4_warp": 1.0,
+    "exp5_dies": 6,
+    "exp6_calib_runs": 100,
+    "exp6_patches": 1000,
+    "layouts": 12,
+    "n_boot": 1000,
+    "nominal_dose": 50.0,
+    "quick": false,
+    "seed": 0,
+    "val_dies": 2,
+    "val_layouts": 8
+  },
+  "pipeline_cfg": {
+    "align": true,
+    "cap": 10.0,
+    "d_star": 0.08830792303525908,
+    "e_star": 2.39460919502447,
+    "field_option": "template",
+    "gamma": 0.2,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "tau": 0.35,
+    "use_stack": false
+  },
+  "target": "verifier F1 drop A->B/C <= 5 points"
+}

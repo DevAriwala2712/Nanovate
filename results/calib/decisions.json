@@ -1,0 +1,32 @@
+{
+  "pipeline_cfg": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.08830792303525908,
+    "e_star": 2.39460919502447,
+    "gamma": 0.2,
+    "cap": 10.0
+  },
+  "criterion": "max killer F1 on Manhattan val (doses 20/50/200) s.t. nuisance suppression >= best percentile-field candidate",
+  "suppression_floor": 0.7083333333333334,
+  "chosen": {
+    "field": "template",
+    "mode": "splice",
+    "tau": 0.35,
+    "n": 288,
+    "n_killer": 144,
+    "n_nuisance": 48,
+    "f1": 0.8469055374592834,
+    "suppression": 0.9166666666666666,
+    "fake_bridges": 4
+  },
+  "near_miss_budget": 0.05,
+  "n_val_patches_per_dose": 96,
+  "quick": false,
+  "seed": 0
+}

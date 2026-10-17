@@ -17,4 +17,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]   # so tests can import the top-level experiments/ package
 addopts = "-q"

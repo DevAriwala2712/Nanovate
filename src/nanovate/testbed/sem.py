@@ -39,6 +39,19 @@ def charging_ramp(shape: tuple[int, int], amp: float, rng: np.random.Generator) 
     return (ramp / m * amp * rng.uniform(0, 1)) if m > 0 else ramp
 
 
+def warp_field(shape: tuple[int, int], amp: float, rng: np.random.Generator, scale: float = 50.0) -> tuple[np.ndarray, np.ndarray]:
+    """Smooth random displacement field (dy, dx) in px with max |displacement| = ``amp`` (0 -> zeros).
+
+    White noise smoothed at ``scale`` px, so the warp varies slowly (a few px of displacement change
+    over hundreds of px), then jointly normalised so the largest component magnitude is ``amp``.
+    """
+    if amp <= 0:
+        return np.zeros(shape), np.zeros(shape)
+    f = [ndi.gaussian_filter(rng.normal(size=shape), scale, mode="reflect") for _ in range(2)]
+    m = max(np.abs(f[0]).max(), np.abs(f[1]).max())
+    return f[0] / m * amp, f[1] / m * amp
+
+
 def expected_image(
     W_canvas: np.ndarray,
     grain_canvas: np.ndarray | None,
@@ -47,12 +60,19 @@ def expected_image(
     tile: int,
     shift: tuple[float, float],
     ramp: np.ndarray | None = None,
+    warp: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> np.ndarray:
-    """Noise-free mean image on the tile, in yield units (multiply by dose for e-/px)."""
+    """Noise-free mean image on the tile, in yield units (multiply by dose for e-/px).
+
+    ``warp`` = (dy, dx) displacement fields on the canvas (px): image(x) = y(x + d(x)) after the shift.
+    """
     y = sem_yield(W_canvas, grain_canvas, cfg)
     y = ndi.gaussian_filter(y, sigma=cfg.sigma_beam)
     if shift != (0.0, 0.0):
         y = ndi.shift(y, shift, order=3, mode="nearest")
+    if warp is not None:
+        yy, xx = np.meshgrid(np.arange(y.shape[0]), np.arange(y.shape[1]), indexing="ij")
+        y = ndi.map_coordinates(y, [yy + warp[0], xx + warp[1]], order=3, mode="nearest")
     out = y[pad:pad + tile, pad:pad + tile]
     if ramp is not None:
         out = out + ramp

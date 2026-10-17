@@ -1,0 +1,5 @@
+method,lowest_dose_f1_ge_0p9
+verifier,none
+d2d_single,none
+d2d_double,none
+cnn,20.0

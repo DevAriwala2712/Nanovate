@@ -49,6 +49,18 @@ def field_calibrated(image: np.ndarray, mu_diel: float, mu_cond: float) -> np.nd
     return np.clip((image.astype(float) - mu_diel) / denom, 0.0, 1.0)
 
 
+def field_template(image: np.ndarray, template: np.ndarray, cad_smooth: np.ndarray, contrast: float) -> np.ndarray:
+    """Field option (c): template-anchored residual, clip(C_hat + (I - T_hat) / contrast, 0, 1).
+
+    T_hat already contains the bloom, so bloom cancels and only unexplained intensity moves the
+    field; ``contrast`` = mu_cond - mu_diel (negative for inverted contrast). Injects a CAD prior, so
+    faint real defects are pulled toward the CAD (judged on recall, PLAN.md §4.1).
+    """
+    if abs(contrast) < 1e-6:
+        contrast = 1.0
+    return np.clip(cad_smooth + (np.asarray(image, dtype=float) - template) / contrast, 0.0, 1.0)
+
+
 def build_field(
     image: np.ndarray,
     option: str = "calibrated",
@@ -58,6 +70,9 @@ def build_field(
     p_lo: float = 2.0,
     p_hi: float = 98.0,
     pre_smooth: float = 0.0,
+    template: np.ndarray | None = None,
+    cad_smooth: np.ndarray | None = None,
+    contrast: float | None = None,
 ) -> tuple[np.ndarray, dict]:
     """Construct conductor probability field P in [0, 1] and return (field, metadata).
 
@@ -88,8 +103,13 @@ def build_field(
         p = field_calibrated(image, mu_diel, mu_cond)
         meta["mu_diel"] = mu_diel
         meta["mu_cond"] = mu_cond
+    elif option == "template":
+        if template is None or cad_smooth is None or contrast is None:
+            raise ValueError("option='template' requires template, cad_smooth and contrast")
+        p = field_template(image, template, cad_smooth, contrast)
+        meta["levels_source"] = "template"
     else:
-        raise ValueError(f"unknown field option {option!r}; expected 'calibrated' or 'percentile'")
+        raise ValueError(f"unknown field option {option!r}; expected 'calibrated', 'percentile' or 'template'")
 
     if pre_smooth > 0:
         p = ndi.gaussian_filter(p, sigma=pre_smooth)

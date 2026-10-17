@@ -110,6 +110,7 @@ def verify_topology(
     singleton: bool = True,
     region_tol: int = 4,
     region_mode: str = "splice",
+    field_kwargs: dict | None = None,
 ) -> tuple[str, dict]:
     """Verify topology of SEM patch against CAD reference (AGENTS.md §5.2).
 
@@ -142,6 +143,7 @@ def verify_topology(
         levels=levels,
         sem_cfg=sem_cfg,
         pre_smooth=pre_smooth,
+        **(field_kwargs or {}),
     )
 
     # 2-5. Margin handling (AGENTS.md §7.5) and Betti / bottleneck computation.

@@ -55,6 +55,7 @@ def max_tension_energy(
     gamma: float = 0.2,
     cap: float = 10.0,
     smooth: float = 1.0,
+    aligned: np.ndarray | None = None,
 ) -> float:
     """Max tension energy over the central window for one (singleton) patch.
 
@@ -63,7 +64,8 @@ def max_tension_energy(
     it is not tuned on any split.
     """
     template = cal.predict(cad)
-    aligned, _ = align_to_template(image, template)
+    if aligned is None:
+        aligned, _ = align_to_template(image, template)
     contrast = abs(cal.mu_cond - cal.mu_diel)
     s = ndi.gaussian_filter(aligned - template, smooth) / contrast if smooth > 0 else (aligned - template) / contrast
     e = tension_energy(s, cad_sdf(cad), gamma, cap)

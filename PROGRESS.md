@@ -300,3 +300,51 @@ Observations:
 
 ### Next
 M7: experiments 1-6 on the held-out test split with CIs (`experiments/exp1..exp6.py`, `scripts/reproduce.py`, README table).
+
+---
+
+## Milestone M7: pipeline, config selection, Experiments 1-6 (`pipeline.py`, `experiments/`, `scripts/reproduce.py`)
+Status: implemented and **run in full** (`python scripts/reproduce.py`; the README results block is generated from `results/exp*/*.csv`). `pytest -q` = 157 passed (incl. smoke tests of every experiment on a tiny config and a two-run identical-table check for Exp 1/3/4/5). Synthetic data; Manhattan val for every selection; held-out **test** split for every reported number; 95% percentile-bootstrap CIs (1,000 resamples); n beside every number (see README for the full tables).
+
+### Built
+`pipeline.py` (singleton path: align -> template-anchored field -> topology -> SDF energy, with reason, `singleton` flag and per-module ms; stack path via Module 2), field option (c) template-anchored residual, smooth warp for Exp 4 (`warp_amp`, 0 = bit-identical to before), `experiments/{common,harness,select_config,report,exp1..exp6}.py`, `scripts/reproduce.py [--quick]`, README generated tables (idempotent, tested).
+
+### Verifier configuration (selected on Manhattan val, frozen; `results/calib/decisions.json`)
+Pre-registered rule: max killer F1 pooled over doses 20/50/200 subject to nuisance suppression >= the best percentile-field candidate (n = 288 val patches, 144 killers, 48 nuisance). Chosen: **template-anchored field, splice, tau 0.35, pre-smooth 1 px, region_tol 8** (val F1 0.847, suppression 0.917; floor from option (a): 0.708). Best per option: template 0.847/0.917; calibrated 0.775/0.729; percentile 0.788/0.708. d* = 0.088, e* = 2.39 so that NEAR_MISS fires on <= 5% of val nuisance (val: 2.1%; val near-miss recall 64.6%, n = 96). Option (c) injects a CAD prior; its recall is inside the F1 above.
+
+### Results vs pre-registered targets (verifier; targets are hypotheses, kept as stated)
+| Exp | Target | Measured (test, synthetic) | Met |
+|---|---|---|---|
+| 1 | >= 90% suppression and >= 90% bridge recall at LER sigma <= 1.5 nm | worst cell (sigma 1.5, grain 30%): suppression 46% [25, 67], bridge recall 79% [62, 96] (n = 24 per cell) | **NO** |
+| 2 | F1 >= 0.9 at lambda >= 50 e-/px | F1 0.81-0.85 at lambda >= 50 (n = 144 per dose); never reaches 0.9 | **NO** |
+| 3 | F1 drop A -> B/C <= 5 pts | curvy -3.7 [-12.7, +5.7], via -7.3 [-15.8, +1.6] pts | yes (point estimate; CI upper bound for curvy is +5.7) |
+| 4 | >= 95% verdicts unchanged (shift ±8 px + warp) | 94% [91, 97] with Module 3 (n = 192); 39% [32, 46] without | **NO** (CI contains 95%) |
+| 5 | near-miss recall >= 80% at the fixed false-alarm rate | 92% [87, 96] (notch 83%, filament 100%; n = 72 each) at nuisance alarm 4% [0, 10] (n = 72); delta-beta alone 29% | yes |
+| 6 | calibration < 50 ms | 79 ms median (100 runs) with registration; 27 ms without | **NO** |
+
+### Comparison with baselines (same test patches, labels)
+- **Exp 2 (killer F1, 50% prevalence):** verifier 0.81-0.85 at lambda >= 20; die-to-die (per-dose rules fitted on val) 0.57-0.69; CNN 0.93-0.95 at lambda >= 20. At lambda 5-10 the verifier flags every clean patch (suppression 0%) and F1 is 0.67-0.68 (the flag-everything value). The CNN reaches F1 >= 0.9 from lambda 20; verifier and die-to-die never do.
+- **Exp 3:** in-distribution (Manhattan) the CNN is best (0.94 vs verifier 0.81), but zero-shot the CNN drops +9.1 [+1.9, +16.7] (curvy) and +19.9 [+10.8, +29.5] pts (via) while the verifier's F1 is 0.84 / 0.88: on via the verifier beats the CNN (0.88 [0.82, 0.93] vs 0.74 [0.66, 0.81]); on curvy they tie (0.84 vs 0.85). The verifier's "drop" is negative partly because its Manhattan F1 is its lowest.
+- **Exp 1:** all methods degrade with LER. At sigma 1.5 / grain 30%: suppression verifier 46%, die-to-die 29% / 21%, CNN 92%; bridge recall 79% / 92% / 100% / 92%. At sigma >= 2.0 everyone except the CNN collapses (verifier suppression 0-12%). The verifier meets 90% suppression only at sigma <= 1.0 and grain <= 20%.
+- **Latency (this CPU):** verifier ~102 ms/patch singleton path (alignment 16, SDF energy 6, topology 79), stack path ~108 ms/patch; die-to-die ~31 ms; CNN 2.7 ms (batch 1, default threads). The CNN is ~40x faster.
+
+### Surprises and findings
+1. **Exp 1's suppression miss is mostly near-miss alarms, not killers.** At sigma 1.5, 31 of the verifier's 36 nuisance failures are NEAR_MISS verdicts and 5 are killers; the pre-registered metric counts NEAR_MISS as a false alarm. The secondary metric (not flagged KILLER) is 92% [79, 100] at sigma 1.5 / grain 30%, equal to the CNN, and 75-83% even at sigma 2.0. d*/e* were frozen on val at the nominal LER (sigma 1.0), and bottleneck/energy grow with roughness, so the near-miss rule does not transfer to rougher LER. A label-free per-stack d* (PLAN §4.2 candidate) was not implemented. The secondary was missing from the first run and was added (Exp 1 rerun; same primary numbers).
+2. **Near-miss capture hits its target, but read it carefully.** Delta-beta alone catches 29% of notch/filament (filament 17%; recall by gap size 1/2/3 nm: delta-beta 30%/10%/10%, full rule 100% each, n = 23/20/29), so most near-misses read as nominal topology; the energy+bottleneck rule then catches nearly all, at a nuisance alarm of 4% (n = 72). That rule responds to any residual defect energy in a patch whose topology is unchanged; Exp 5 contains no harmless-but-large nuisance variety, so it does not show the rule separates a near-miss from a rough-but-harmless wire (Exp 1 suggests it does not at sigma >= 1.5).
+3. **The verifier does not reach the CNN's in-distribution accuracy**, and only beats it zero-shot on via. The honest summary of this testbed: topology-first verification is much better than die-to-die, comparable to or better than a Manhattan-trained CNN off-distribution, and worse in-distribution, with a latency ~40x higher.
+4. **Alignment is necessary but not sufficient for Exp 4:** 94% with vs 39% without Module 3. Remaining flips with Module 3 (n = 192): bridge 90%, open 92%, nuisance/particle 98% unchanged; flips are mostly NEAR_MISS <-> KILLER_BRIDGE (5) and open/particle <-> nuisance (4), consistent with the sub-pixel floor measured in M4.
+
+### Rulings
+1. **Singleton path is the primary verifier in all experiments;** Module 2 (stack) is only timed (Exp 6), not scored. Reason: M5 showed the stack field does not beat per-patch smoothing for Module 4. Cost if wrong: experiments understate a stack-based verifier on layouts with peers.
+2. **Baseline rules are fitted per dose on Manhattan val at the nominal nuisance** (sigma 1.0, grain 15%) and not re-fitted per Exp 1 cell; the CNN threshold (0.39) is from M6. Generous to die-to-die in dose, not in nuisance level.
+3. **Config selection uses a fixed small grid on val;** pre-smooth, region_tol and the SDF constants were fixed beforehand, not searched. Chosen on n = 48 val nuisance samples (suppression granularity 2%).
+4. **CNN: one training run (seed 0, Colab GPU),** so the CIs reflect test-sample variance only, not training-seed variance. GPU training is not bit-reproducible.
+5. **Near-miss definition for Exp 5:** an alarm is any non-NUISANCE verdict (Delta-beta != 0 or NEAR_MISS); strict NEAR_MISS-class rates are also in `results/exp5/near_miss.csv`.
+
+### Caveats
+- Exp 1 cells and Exp 5 classes have n = 24-72; many CIs are wide (see README). Exp 4's miss is within its CI of the 95% target.
+- Full-run reproducibility was checked by tests on a tiny config (identical tables for Exp 1/3/4/5) and by rerunning Exp 1 (identical primary numbers); the whole full run was not repeated end to end.
+- `reproduce.py --quick` (150 s) writes `results/quick/` and leaves the README alone.
+
+### Next
+M8: `notebooks/demo.ipynb` (one tile through every stage with each verdict and reason; plan: logic in a tested module, since `jupyter`/`nbconvert` is not an allowed dependency), regenerate the review-UI data with the current pipeline, and a final PROGRESS/README pass.
