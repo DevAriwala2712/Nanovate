@@ -207,3 +207,25 @@ Transfer error is 11-12%, i.e. not ~0: the deliberate model mismatch (anisotropi
 
 ### Next
 M4: Module 3 (sub-pixel alignment with sign test, CAD SDF tension energy), which also feeds the near-miss rule in Module 4 and the shift-sensitivity seen in the M2 probe.
+
+---
+
+## Milestone M4: Module 3 alignment + SDF tension energy (`modules/align_sdf.py`, `tests/test_align_sdf.py`, `scripts/align_sdf_report.py`)
+Status: implemented; `pytest -q` = 96 passed (21 new). Results in `results/m4_align_sdf/`. Synthetic data, Manhattan val, seed 0, Module-1 calibrated levels, fixed rule (smooth 1, splice, region_tol 8, tau 0.45; nothing tuned). Near-miss branch of `verify_topology` still disabled: d*, e* are not chosen (M7).
+
+### Built
+`align_to_template` (cross-correlation against T(C), 20x sub-pixel, 3 passes, cubic `ndi.shift`; sign convention: `ndi.shift(image, d) ~ template`, d ~ -shift, tested both signs and round trip), `cad_sdf` (EDT, px = nm, dielectric > 0), `tension_energy` = |S| exp(gamma min(|phi|, cap)), `max_tension_energy` (S = smoothed residual in contrast units; gamma = 0.2, cap = 10 px fixed a priori). No Langevin step.
+
+### Measured
+1. **Estimator accuracy** (template = the wafer's own noise-free image, shifts ~±8 px, 4 shifts x 3 families): max error 0.05 px at dose 200 (manhattan/curvy/via), <= 0.20 px at dose 5 -> inside the plan's <0.1 px (high dose) and <0.25 px (lambda = 5) tolerances.
+2. **Alignment against the CAD-derived template misses the <0.1 px tolerance** (n = 4 shifts per cell, 3 passes): manhattan max 0.40-0.45 px, curvy 0.65 px (dose 200) / 0.90 px (dose 5), via 0.20 px. The floor is the CAD/wafer mismatch (LER), unchanged by extra passes; at true shift 0 the estimate is already off by up to ~0.45 px. In the full report the median error against T(C) is 0.33-0.45 px. Target kept, miss recorded.
+3. **Bug found while testing:** single-pass circular correlation biased the peak in proportion to the shift (content entering from outside the frame): error 0.1-0.5 px even with a perfect template. Iterating on the progressively aligned image fixed it (Manhattan 0.15 -> 0.05 px, curvy 0.50 -> 0.05 px at dose 200). Zero-padding made it worse; my masked-correlation attempt returned nonsense (not pursued); Hann windowing and pre-smoothing hurt on testbed images.
+4. **Near-miss separation (risk R3 dry run), n = 16 per kind/dose.** Column `dbeta0` in the report = fraction with Delta-beta = (0,0) (misnamed). Notch: 94-100% keep Delta-beta = 0. **Filament: only 25-31% keep Delta-beta = 0; the rest read as bridges** (gap 1-3 px is below the optical resolution), so most filaments are unreachable by a near-miss rule. Among Delta-beta = 0 samples, near-miss (notch|filament, n = 19-21) vs nuisance (n = 15-16): AUC bottleneck 0.74 (dose 50) / 0.79 (200); AUC max SDF energy 0.98 / 1.00. Caveat: energy separates "a defect is present" from "none" (nuisance has no defect), not near-miss from a harmless nuisance of similar size; it is not a topology criterion.
+5. **Experiment-4 preview** (dose 50, shifts ±8 px incl. diagonals, no warp; verdict vs the same wafer's zero-shift acquisition; n = 128 per mode): **with Module 3: 85.5% unchanged; without: 52.7%.** Target >= 95% is **missed**. By kind with alignment: bridge 100%, nuisance 95%, open 78%, particle 69% (the sub-resolution killers flip with sub-pixel phase). This preview excludes the small warp that Exp 4 adds.
+
+### Notes
+- Alignment is to T(C) as planned; the sample-level floor means topology sees ~0.4 px residual misregistration, which `region_tol` (8) must absorb.
+- Energy parameters (gamma, cap, smooth) are a-priori constants, not selected on val.
+
+### Next
+M5 (Module 2): aligned K = 32 stack + rank-2 randomized SVD + MAD, with singleton fallback. It is also the denoiser that should replace `pre_smooth` (which hid sub-resolution opens).
