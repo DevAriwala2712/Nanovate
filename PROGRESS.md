@@ -268,8 +268,8 @@ M6 baselines: die-to-die (single and double difference) and the Manhattan-only C
 
 ---
 
-## Milestone M6 (in progress): baselines (`baselines/die_to_die.py`, `baselines/cnn.py`, `scripts/baselines_report.py`)
-Status: code + tests done (11 new tests pass: D2D flags an obvious bridge, not a clean die or re-acquisition; double-difference cancels a defect in one reference; val-only threshold fit refuses other splits; CNN forward shape, seeded determinism, tiny-batch overfit, val-only threshold). **Baseline numbers are NOT final.**
+## Milestone M6: baselines (`baselines/die_to_die.py`, `baselines/cnn.py`, `scripts/baselines_report.py`)
+Status: code + tests done (11 new tests pass: D2D flags an obvious bridge, not a clean die or re-acquisition; double-difference cancels a defect in one reference; val-only threshold fit refuses other splits; CNN forward shape, seeded determinism, tiny-batch overfit, val-only threshold). The first-run numbers below were degenerate; final val numbers are in the Results section.
 D2D aligns target and references with the Module-3 aligner and applies the Module-1 GAT (z-units), so alignment and noise scaling are not confounds.
 
 First full run on Manhattan val (synthetic; 50% killer prevalence, so "flag everything" scores F1 = 0.67), both baselines degenerate:
@@ -278,3 +278,25 @@ First full run on Manhattan val (synthetic; 50% killer prevalence, so "flag ever
 
 ### M6: CNN training moved off this machine (Colab)
 `scripts/train_cnn.py` + `notebooks/train_cnn_colab.ipynb` train the CNN on a GPU: 48 Manhattan-train layouts x 4 dies x 6 kinds = 1152 patches, random dose per sample (5-200 e-/px), 60 epochs (~2,200 steps), seed 0; the budget is fixed before any val/test CNN number exists. Weights come back as `cnn.pt` and are evaluated here with `scripts/baselines_report.py --cnn-weights` (val-chosen threshold, F1, latency). GPU training is not bit-reproducible; config, seed and loss history are saved with the weights. Not yet run.
+
+### M6 results: baselines evaluated on Manhattan val (`results/m6_baselines/`, CNN weights `m6_cnn/cnn.pt`)
+Synthetic data. Val items: 8 layouts x 2 dies x 6 kinds at doses 20 / 50 / 200 (n = 96 per dose, 48 killers = 50% prevalence, so "flag everything" scores F1 = 0.67). **These are IN-SAMPLE for the selected thresholds** (D2D: 3 parameters per dose; CNN: 1 probability threshold, 0.39); the CNN weights were trained only on Manhattan train. No test split has been used; held-out numbers come from the M7 experiments.
+CNN: Colab GPU, 1152 train patches, 60 epochs, loss 0.728 -> 0.210, in-sample train accuracy 0.93 (torch 2.11 on Colab vs 2.14 here; GPU training is not bit-reproducible, config and loss history are saved).
+
+| method (Manhattan val) | dose 20 | dose 50 | dose 200 | all (n = 288) | nuisance false alarm (all) | recall bridge / open / particle (all) |
+|---|---|---|---|---|---|---|
+| D2D single, per-dose rule | 0.72 | 0.68 | 0.69 | 0.70 | 0.08 | 0.98 / 0.12 / 0.71 |
+| D2D double, per-dose rule | 0.70 | 0.70 | 0.69 | 0.69 | 0.33 | 1.00 / 0.46 / 0.90 |
+| D2D single, one pooled rule | 0.72 | 0.67 | 0.67 | 0.68 | 0.71 | 1.00 / 0.73 / 0.94 |
+| D2D double, one pooled rule | 0.70 | 0.67 | 0.67 | 0.68 | 0.67 | 1.00 / 0.71 / 0.98 |
+| CNN ([image, CAD], Manhattan train only) | 0.90 | 0.88 | 0.91 | 0.90 | 0.00 | 0.90 / 0.83 / 0.90 |
+
+(values in the dose columns are F1.) Latency, this CPU: CNN 2.3 ms/patch at batch 1, 4.3 ms/patch at batch 64; D2D single including alignment + GAT + stats 35 ms/patch (not yet timed under the Exp-6 protocol).
+
+Observations:
+1. **Die-to-die is weak on this testbed even when tuned per dose** (F1 0.68-0.72, barely above the flag-everything 0.67): LER and grain differences between dies are as large as the defect signal. Opens are almost invisible to it (recall 0.06-0.25 per dose for the single-difference rule); a rule that finds them (double, dose 200) does so by flagging 81% of clean dies. A single pooled rule is useless above dose 20 (false alarm 1.00), confirming that the threshold does not transfer across doses.
+2. **The CNN is a strong in-distribution baseline** (F1 0.88-0.91, zero nuisance false alarms on val) and, unlike our verifier's weak spots, it finds opens (0.83). It sees the CAD channel by design (PLAN Q5). Whether it holds on curvy/via layouts is Experiment 3.
+3. The comparison with the topology verifier is not made here: M7 evaluates all methods on the same held-out test samples with bootstrap CIs.
+
+### Next
+M7: experiments 1-6 on the held-out test split with CIs (`experiments/exp1..exp6.py`, `scripts/reproduce.py`, README table).
