@@ -41,6 +41,7 @@ python -m venv .venv && .venv/bin/pip install -e .      # numpy scipy scikit-ima
 .venv/bin/python scripts/reproduce.py --quick            # every experiment end to end, small n, a few minutes -> results/v2/quick/
 .venv/bin/python scripts/reproduce.py                    # full v2 run -> results/v2/ and the v2 table below (CPU, about an hour)
 .venv/bin/python scripts/reproduce.py --version v1       # the first pre-registered run -> results/ and the v1 table
+.venv/bin/python scripts/reproduce.py --version v3       # v3: event rule chosen on val, Exp 1-6 on a fresh test seed -> results/v3/ and the v3 table
 ```
 
 **v1 and v2.** v1 is the first, pre-registered run and is kept unchanged. v2 adds fixes designed *after* the v1 test
@@ -111,6 +112,147 @@ Other prevalences (killers missed / non-killer sites flagged KILLER):
 | via | fixed_0.39 | 0.88 | 192 | none | 3 seeds, n=144 |
 | via | labelled | 0.88 | 192 | none | 3 seeds, n=144 |
 <!-- DAY0:END -->
+
+## Results (v3: per-gap merge rule, fresh test seed)
+
+<!-- RESULTS_V3:START -->
+_All numbers below are **synthetic data** (full run, v3; 95% percentile-bootstrap CIs in brackets, n beside every number)._
+
+_v3 replaces the single global tau for **merges** with a per-gap rule against the template-expected merge level, and calls a patch from its **located events** (no Delta-beta sum, so a seen bridge is never cancelled); cuts and necks keep v2's rule (an optical limit, see `docs/V3_PHASE1_DIAGNOSIS.md`). Every v3 choice was made on Manhattan val only and evaluated once on a **fresh test seed**; targets are unchanged; v2 and v1 numbers are kept below._
+
+_Verifier config frozen on Manhattan val: v2 field / region / tau 0.35; merge margin 0.6, grain normalisation off, per-neck cut margin 0.4, protrusion edge level None; d* 0.0779973055279618, e* 2.5748902690949445, z* 5.46093693673947 (val killer F1 0.90, n=2592); test seed 20261018._
+
+#### Pre-registered targets vs measured (verifier)
+
+| Exp | Target (hypothesis) | Measured | Met |
+|---|---|---|---|
+| 1 Nuisance stress | >= 90% suppression and >= 90% bridge recall at LER sigma <= 1.5 nm | worst cell: suppression 67%, bridge recall 88% | **NO** |
+| 2 Dose cliff | F1 >= 0.9 at lambda >= 50 e-/px | F1 at lambda >= 50: min 0.87 (max 0.89) | **NO** |
+| 3 Zero-shot geometry | F1 drop A -> B/C <= 5 points | curvy: +2.9 pts (improved); via: -2.6 pts (dropped) | yes |
+| 4 Misalignment | >= 95% verdicts unchanged (shift +-8 px + warp) | 97% with Module 3 | yes |
+| 5 Near-miss capture | recall >= 80% at the fixed false-alarm rate | 85% recall | yes |
+| 6 Calibration time | < 50 ms for 3 scribe patches | 43 ms (median of 100) | yes |
+
+#### Exp 1 - nuisance stress (LER sigma 1.5 nm, grain 30%; full grid in `results/v3/exp1/`)
+
+| Method | Nuisance suppression (NUISANCE verdict) | Nuisance not flagged KILLER (secondary) | Bridge recall |
+|---|---|---|---|
+| Verifier (ours) | 75% [58, 92] (n=24) | 83% [67, 96] (n=24) | 96% [88, 100] (n=24) |
+| Die-to-die (single) | 25% [8, 42] (n=24) | 25% [8, 42] (n=24) | 100% [100, 100] (n=24) |
+| Die-to-die (double) | 17% [4, 33] (n=24) | 17% [4, 33] (n=24) | 96% [88, 100] (n=24) |
+| CNN (Manhattan-trained) | 88% [75, 100] (n=24) | 88% [75, 100] (n=24) | 88% [75, 100] (n=24) |
+
+#### Exp 2 - killer F1 vs dose (e-/px)
+
+| Method | 5 | 10 | 20 | 35 | 50 | 100 | 200 |
+|---|---|---|---|---|---|---|---|
+| Verifier (ours) | 0.67 [0.60, 0.74] (n=144) | 0.76 [0.69, 0.83] (n=144) | 0.85 [0.78, 0.90] (n=144) | 0.86 [0.79, 0.91] (n=144) | 0.87 [0.81, 0.92] (n=144) | 0.89 [0.83, 0.94] (n=144) | 0.88 [0.82, 0.93] (n=144) |
+| Die-to-die (single) | 0.68 [0.59, 0.75] (n=144) | 0.66 [0.58, 0.74] (n=144) | 0.68 [0.58, 0.76] (n=144) | 0.62 [0.51, 0.71] (n=144) | 0.62 [0.51, 0.72] (n=144) | 0.67 [0.57, 0.76] (n=144) | 0.65 [0.55, 0.74] (n=144) |
+| Die-to-die (double) | 0.63 [0.55, 0.70] (n=144) | 0.63 [0.53, 0.72] (n=144) | 0.69 [0.60, 0.78] (n=144) | 0.66 [0.57, 0.73] (n=144) | 0.64 [0.53, 0.72] (n=144) | 0.64 [0.53, 0.74] (n=144) | 0.68 [0.60, 0.75] (n=144) |
+| CNN (Manhattan-trained) | 0.66 [0.55, 0.75] (n=144) | 0.86 [0.80, 0.92] (n=144) | 0.91 [0.86, 0.95] (n=144) | 0.93 [0.89, 0.97] (n=144) | 0.92 [0.88, 0.96] (n=144) | 0.93 [0.89, 0.97] (n=144) | 0.95 [0.90, 0.98] (n=144) |
+
+Lowest dose with F1 >= 0.9: Verifier (ours): none; Die-to-die (single): none; Die-to-die (double): none; CNN (Manhattan-trained): 20.0
+
+#### Exp 2 diagnostic - verifier ceiling without shot noise (not a target)
+
+| Input | Killer F1 | Nuisance suppression | Recall bridge / open / particle |
+|---|---|---|---|
+| verifier (noisy, dose 50) | 0.87 [0.81, 0.92] (n=144) | 88% | 96% / 83% / 100% |
+| verifier (noise-free expected image) | 0.89 [0.83, 0.94] (n=144) | 88% | 100% / 83% / 100% |
+
+Killers missed even noise-free (below this verifier's optical resolution): bridge 0/24; open 4/24; particle 0/24.
+
+#### Exp 3 - zero-shot geometry (killer F1)
+
+| Method | manhattan | curvy | via |
+|---|---|---|---|
+| Verifier (ours) | 0.87 [0.81, 0.92] (n=144) | 0.90 [0.84, 0.95] (n=144) | 0.84 [0.78, 0.90] (n=144) |
+| Die-to-die (single) | 0.62 [0.51, 0.72] (n=144) | 0.55 [0.44, 0.64] (n=144) | 0.56 [0.46, 0.66] (n=144) |
+| Die-to-die (double) | 0.64 [0.53, 0.72] (n=144) | 0.60 [0.52, 0.69] (n=144) | 0.61 [0.51, 0.70] (n=144) |
+| CNN (Manhattan-trained) | 0.92 [0.88, 0.96] (n=144) | 0.83 [0.77, 0.89] (n=144) | 0.75 [0.67, 0.82] (n=144) |
+
+F1 change vs Manhattan (points, 95% CI; positive = better on the new layout): Verifier (ours) -> curvy: +2.9 [-4.5, +10.4]; Verifier (ours) -> via: -2.6 [-11.5, +5.3]; Die-to-die (single) -> curvy: -8.0 [-21.6, +7.0]; Die-to-die (single) -> via: -6.9 [-20.2, +8.0]; Die-to-die (double) -> curvy: -3.6 [-16.6, +9.2]; Die-to-die (double) -> via: -2.3 [-15.0, +11.8]; CNN (Manhattan-trained) -> curvy: -8.9 [-17.4, -0.6]; CNN (Manhattan-trained) -> via: -17.1 [-27.0, -9.0]
+
+#### Exp 4 - verdicts unchanged vs zero shift (shift +-8 px + warp <= 1 px)
+
+| Pipeline | Verdict class unchanged | Killer flag unchanged |
+|---|---|---|
+| verifier with M3 | 97% [94, 99] (n=192) | 98% [96, 99] (n=192) |
+| verifier without M3 | 52% [45, 59] (n=192) | 85% [80, 90] (n=192) |
+
+#### Exp 5 - near-miss capture
+
+| Kind | Rule | Metric | Rate |
+|---|---|---|---|
+| nuisance | delta beta alone | alarm_rate | 10% [4, 17] (n=72) |
+| nuisance | full rule | alarm_rate | 10% [4, 17] (n=72) |
+| notch | delta beta alone | recall | 40% [29, 53] (n=72) |
+| notch | full rule | recall | 69% [60, 81] (n=72) |
+| filament | delta beta alone | recall | 21% [12, 31] (n=72) |
+| filament | full rule | recall | 100% [100, 100] (n=72) |
+| notch+filament | delta beta alone | recall | 31% [23, 38] (n=144) |
+| notch+filament | full rule | recall | 85% [78, 90] (n=144) |
+
+#### Exp 6 - latency (ms, this CPU; not bit-reproducible)
+
+| What | Median | Mean [95% CI] (n) |
+|---|---|---|
+| calibration (3 scribe patches, with registration) | 43.1 | 43.0 [42.9, 43.1] (n=100) |
+| calibration (3 scribe patches, no registration) | 15.2 | 15.2 [15.2, 15.2] (n=100) |
+| verifier: Module 3 alignment | 15.9 | 15.9 [15.9, 15.9] (n=1000) |
+| verifier: Module 3 SDF energy | 6.8 | 6.8 [6.8, 6.9] (n=1000) |
+| verifier: Module 4 topology (+ field) | 107.1 | 107.6 [107.1, 108.1] (n=1000) |
+| verifier: total per patch (singleton path) | 129.8 | 130.4 [129.9, 130.9] (n=1000) |
+| die-to-die single (align + GAT + stats) | 30.7 | 30.7 [30.7, 30.7] (n=1000) |
+| cnn batch 1 (default threads) | 2.4 | 2.4 [2.4, 2.4] (n=1000) |
+| verifier: stack path total per patch (K=32) (v2 rule) | 109.7 | 109.7 [109.7, 109.7] (n=1) |
+| cnn batch 1, 1 thread(s) | 3.1 | 3.2 [3.1, 3.2] (n=20) |
+| cnn batch 64, 1 thread(s) (per patch) | 7.7 | 7.8 [7.6, 8.0] (n=5) |
+| cnn batch 1, 5 thread(s) | 2.1 | 2.2 [2.1, 2.2] (n=20) |
+| cnn batch 64, 5 thread(s) (per patch) | 7.3 | 7.3 [7.3, 7.4] (n=5) |
+
+#### Phase 2 pre-registered targets (hypotheses; verifier = v3 primary)
+
+| Target | Measured | Met |
+|---|---|---|
+| Noise-free F1 >= 0.92 | 0.89 [0.83, 0.94] (n=144) | **NO** |
+| Exp 1 suppression >= 90% (worst cell, LER <= 1.5 nm) | 67% [50, 83] (n=24), sigma 1.5 nm, grain 20% | **NO** |
+| Exp 1 bridge recall >= 90% (worst cell, LER <= 1.5 nm) | 88% [75, 100] (n=24), sigma 0.5 nm, grain 30% | **NO** |
+| Manhattan F1 >= 0.88 | 0.87 [0.81, 0.92] (n=144) | **NO** |
+
+#### Rule variants on the same fresh test patches (paired)
+
+The secondary variant was declared before this run (`results/v3/calib/secondary.json`). "v2 rule" is v2's Delta-beta ladder and thresholds re-run on these patches, so it is comparable with v3 here (the v2 table below used a different test seed).
+
+| Metric | v3 primary (frozen) | v3 secondary (cut margin off, pre-declared) | v2 rule, same patches |
+|---|---|---|---|
+| exp1 worst-cell suppression (LER <= 1.5 nm) | 67% [50, 83] (n=24), sigma 1.5 nm, grain 20% | 67% [50, 83] (n=24), sigma 1.5 nm, grain 20% | 67% [50, 83] (n=24), sigma 1.5 nm, grain 20% |
+| exp1 worst-cell bridge recall (LER <= 1.5 nm) | 88% [75, 100] (n=24), sigma 0.5 nm, grain 30% | 88% [75, 100] (n=24), sigma 0.5 nm, grain 30% | 62% [42, 83] (n=24), sigma 0.5 nm, grain 30% |
+| killer F1, manhattan, dose 50 | 0.87 [0.81, 0.92] (n=144) | 0.85 [0.79, 0.90] (n=144) | 0.86 [0.80, 0.91] (n=144) |
+| killer F1, curvy, dose 50 | 0.90 [0.84, 0.95] (n=144) | 0.88 [0.81, 0.92] (n=144) | 0.88 [0.83, 0.93] (n=144) |
+| killer F1, via, dose 50 | 0.84 [0.78, 0.90] (n=144) | 0.81 [0.74, 0.87] (n=144) | 0.84 [0.77, 0.90] (n=144) |
+| killer F1, manhattan, noise-free (dose 50) | 0.89 [0.83, 0.94] (n=144) | 0.87 [0.81, 0.92] (n=144) | 0.87 [0.81, 0.92] (n=144) |
+| recall bridge, manhattan, dose 50 | 96% [88, 100] (n=24) | 96% [88, 100] (n=24) | 96% [88, 100] (n=24) |
+| recall open, manhattan, dose 50 | 83% [67, 96] (n=24) | 88% [71, 100] (n=24) | 88% [71, 100] (n=24) |
+| recall particle, manhattan, dose 50 | 100% [100, 100] (n=24) | 100% [100, 100] (n=24) | 100% [100, 100] (n=24) |
+| notch called killer, manhattan, dose 50 | 12% [0, 25] (n=24) | 33% [17, 50] (n=24) | 33% [17, 50] (n=24) |
+| filament called killer, manhattan, dose 50 | 38% [21, 54] (n=24) | 38% [21, 54] (n=24) | 29% [12, 46] (n=24) |
+
+#### Cut / neck detection limit (Manhattan test, noise-free, dose 50; small n per bin)
+
+| Kind | Size bin | Metric | v3 primary (frozen) | v3 secondary (cut margin off, pre-declared) | v2 rule, same patches |
+|---|---|---|---|---|---|
+| open | length [3, 4) nm | recall | 0% [0, 0] (n=4) | 25% [0, 75] (n=4) | 25% [0, 75] (n=4) |
+| open | length [4, 5) nm | recall | 100% [100, 100] (n=4) | 100% [100, 100] (n=4) | 100% [100, 100] (n=4) |
+| open | length [5, 6) nm | recall | 100% [100, 100] (n=6) | 100% [100, 100] (n=6) | 100% [100, 100] (n=6) |
+| open | length [6, 7) nm | recall | 100% [100, 100] (n=7) | 100% [100, 100] (n=7) | 100% [100, 100] (n=7) |
+| open | length [7, 8.01) nm | recall | 100% [100, 100] (n=3) | 100% [100, 100] (n=3) | 100% [100, 100] (n=3) |
+| notch | remaining [1.5, 2.5) nm | not called killer | 88% [62, 100] (n=8) | 50% [12, 88] (n=8) | 50% [12, 88] (n=8) |
+| notch | remaining [2.5, 3.5) nm | not called killer | 88% [62, 100] (n=8) | 75% [38, 100] (n=8) | 75% [38, 100] (n=8) |
+| notch | remaining [3.5, 4.5) nm | not called killer | 88% [62, 100] (n=8) | 88% [62, 100] (n=8) | 88% [62, 100] (n=8) |
+
+Shortest cut length from which every bin has open recall >= 90% (definition fixed before the run): v3 primary (frozen): 4 nm; v3 secondary (cut margin off, pre-declared): 4 nm; v2 rule, same patches: 4 nm.
+<!-- RESULTS_V3:END -->
 
 ## Results (v2: post-hoc fixes)
 

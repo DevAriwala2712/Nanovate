@@ -508,3 +508,27 @@ Surprises / honest notes:
 4. Cut detection limit (pre-registered definition, noise-free val): 5 nm cut length.
 5. Pre-existing drift found: the current generator renders the v1 README header as "(full run, v1; ...)" while the
    README v1 block says "(full run; ...)"; `reproduce.py --version v1` would change that line. Not touched.
+
+### v3 fresh-test run (once; test seed 20261018; README "Results (v3)" generated from `results/v3/`)
+Ran `python -m experiments.v3_run` once (26 min). Primary = frozen config; secondary (cut margin off) pre-declared in
+`results/v3/calib/secondary.json` (commit c8728bf) before the run; "v2 rule" re-scored on the same patches (paired).
+Disclosure: a first `--quick` smoke run accidentally drew 3 layouts x 1 die from the official test seed; its output was
+deleted unread, nothing was changed afterwards, and `--quick` now uses a separate smoke seed (test_seed + 7919, tested).
+
+Phase 2 targets (all missed; kept as stated):
+| Target | Measured (v3 primary) | Met |
+|---|---|---|
+| Noise-free F1 >= 0.92 | 0.89 [0.83, 0.94] (n = 144) | NO: cut-class optical limit (4 of 24 opens are 3-4 nm cuts, all missed noise-free) |
+| Exp 1 suppression >= 90% | worst cell 67% [50, 83] (sigma 1.5, grain 20%, n = 24) | NO: same as the v2 rule on these patches (67%); spurious killer events at high LER |
+| Exp 1 bridge recall >= 90% | worst cell 88% [75, 100] (sigma 0.5, grain 30%, n = 24) | NO, but CI contains 90%; v2 rule on the same patches 62% |
+| Manhattan F1 >= 0.88 | 0.87 [0.81, 0.92] (n = 144) | NO (CI contains it); v2 rule same patches 0.86 |
+Original targets: Exp 1 NO, Exp 2 NO (0.87-0.89 at dose >= 50), Exp 3 yes (curvy +2.9, via -2.6 pts), Exp 4 yes (97%; v2 test 94%),
+Exp 5 yes (85% recall), Exp 6 yes (43 ms). Exp 5 note: test nuisance alarm is 10% [4, 17] (n = 72), above the 5% val budget,
+all from killer events (Delta-beta alone gives the same 10%), so the "fixed false-alarm rate" is not held on this seed.
+
+Paired v3 vs v2 rule on the fresh patches: bridge worst-cell recall 62% -> 88%, notch called killer 33% -> 12%, Manhattan F1
+0.86 -> 0.87, noise-free 0.87 -> 0.89, but open recall 88% -> 83% (the cut margin's cost; secondary keeps 88%) and filaments
+called killer 29% -> 38%. Per-patch time 99 -> 130 ms (Module 4 76 -> 107 ms). The CNN still leads in-domain (0.92) and
+the verifier leads zero-shot on via (0.84 vs 0.75). Cut detection limit on test: 4 nm (n = 4-7 per bin; val said 5 nm).
+Surprise: the fresh test seed is harder for nuisance at sigma 1.5 than v2's test seed (v2 rule 67% here vs 88% there), so
+cross-seed comparison with the v2 README table is not like-for-like; use the paired table.

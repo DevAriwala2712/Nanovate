@@ -1,0 +1,25 @@
+kind,size,lo_nm,hi_nm,rule,metric,mean,ci_lo,ci_hi,n
+open,length,3.0,4.0,primary,recall,0.0,0.0,0.0,4
+open,length,3.0,4.0,secondary,recall,0.25,0.0,0.75,4
+open,length,3.0,4.0,v2 rule,recall,0.25,0.0,0.75,4
+open,length,4.0,5.0,primary,recall,1.0,1.0,1.0,4
+open,length,4.0,5.0,secondary,recall,1.0,1.0,1.0,4
+open,length,4.0,5.0,v2 rule,recall,1.0,1.0,1.0,4
+open,length,5.0,6.0,primary,recall,1.0,1.0,1.0,6
+open,length,5.0,6.0,secondary,recall,1.0,1.0,1.0,6
+open,length,5.0,6.0,v2 rule,recall,1.0,1.0,1.0,6
+open,length,6.0,7.0,primary,recall,1.0,1.0,1.0,7
+open,length,6.0,7.0,secondary,recall,1.0,1.0,1.0,7
+open,length,6.0,7.0,v2 rule,recall,1.0,1.0,1.0,7
+open,length,7.0,8.01,primary,recall,1.0,1.0,1.0,3
+open,length,7.0,8.01,secondary,recall,1.0,1.0,1.0,3
+open,length,7.0,8.01,v2 rule,recall,1.0,1.0,1.0,3
+notch,remaining,1.5,2.5,primary,not_called_killer,0.875,0.625,1.0,8
+notch,remaining,1.5,2.5,secondary,not_called_killer,0.5,0.125,0.875,8
+notch,remaining,1.5,2.5,v2 rule,not_called_killer,0.5,0.125,0.875,8
+notch,remaining,2.5,3.5,primary,not_called_killer,0.875,0.625,1.0,8
+notch,remaining,2.5,3.5,secondary,not_called_killer,0.75,0.375,1.0,8
+notch,remaining,2.5,3.5,v2 rule,not_called_killer,0.75,0.375,1.0,8
+notch,remaining,3.5,4.5,primary,not_called_killer,0.875,0.625,1.0,8
+notch,remaining,3.5,4.5,secondary,not_called_killer,0.875,0.625,1.0,8
+notch,remaining,3.5,4.5,v2 rule,not_called_killer,0.875,0.625,1.0,8
