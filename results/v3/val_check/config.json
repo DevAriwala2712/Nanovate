@@ -1,0 +1,73 @@
+{
+  "v3_cfg": {
+    "quick": false,
+    "seed": 0,
+    "test_seed": 20261018,
+    "val_layouts": 8,
+    "val_dies": 2,
+    "sel_doses": [
+      20,
+      50,
+      200
+    ],
+    "cells_sigma": [
+      0.5,
+      1.0,
+      1.5
+    ],
+    "cells_grain": [
+      0.0,
+      0.15,
+      0.3
+    ],
+    "nominal": [
+      1.0,
+      0.15
+    ],
+    "workers": 6,
+    "n_boot": 1000
+  },
+  "pipeline_cfg_v3": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0779973055279618,
+    "e_star": 2.5748902690949445,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.46093693673947
+  },
+  "event_rule_cfg": {
+    "rule": "v3_events",
+    "pair_dist": 30.0,
+    "m_merge": 0.6,
+    "normalise": false,
+    "m_norm": 0.0,
+    "body_radius": 6.0,
+    "m_cut": 0.4,
+    "e_edge": null
+  },
+  "pipeline_cfg_v2": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0775434990066642,
+    "e_star": 2.6189942373880593,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.578071347336651
+  },
+  "data": "synthetic",
+  "split": "val",
+  "open_limit_nm": 5.0
+}

@@ -485,3 +485,26 @@ Val-only design probe (`scripts/v3_probes/design_probe.py`, noise-free, n = 96 b
 bridge vs filament merge saddle, fewest errors of any threshold: grain 15% 3/96 (AUC 0.995), grain 30% 7/96 (AUC 0.983);
 normalising by the defect body level: 4/96 and 5/96. Grain-dimmed bridges are mostly a threshold-placement problem
 noise-free; Exp 1 is noisy, so this is an optimistic bound. The filament-read-as-split cue was not measured (probe gap).
+
+### Phase 2 implementation + val selection (`docs/V3_PHASE2_VAL.md`), waiting at Stop Point 3
+Built `modules/events.py` (located events: per-seed-pair merge level vs the template-expected level, H0/H1 bars located
+by GUDHI vertex pairs, event-set verdict), `pipeline_v3.py` (v2 path untouched; `rule="v2_global_tau"` calls
+`verify_patch`), `experiments/v3_select.py`, `experiments/v3_val_report.py`, v3 branch in `experiments/report.py`
+(Exp 3 reported as change, "+7.3 pts (improved)", v3 block only; v2 block still renders byte-identically, tested).
+15 new tests (`tests/test_v3_events.py`); v2 Delta-beta and bottleneck reproduced from the located bars.
+
+Frozen on Manhattan val (`results/v3/calib/decisions.json`, 2,592 patches): m_merge 0.60, normalisation off,
+per-neck m_cut 0.40, e_edge off; d* 0.078, e* 2.57, z* 5.46. Pooled val F1 0.90 [0.88, 0.91] vs v2 0.85 [0.83, 0.86].
+
+Surprises / honest notes:
+1. The per-neck cut margin was selected and gives most of the pooled gain (without it the best pooled F1 is 0.855).
+   It does not separate cuts from necks better. It moves the operating point: notch called killer 43% -> 9%,
+   open recall 85% -> 74% (in-selection, n = 432 each). v3 therefore lets more opens escape than v2.
+2. The protrusion cue (e_edge) lowered val F1 at every setting, so it is off: filament-as-split is not fixed (16-28% of
+   filaments still called killer).
+3. Held-out val (layouts 8-23, dose 50): noisy F1 0.82 -> 0.85, noise-free 0.85 -> 0.88 (n = 192; paired differences'
+   CIs include 0). Noise-free target 0.92 looks likely to be missed; Exp 1 val analogue worst cell bridge recall 81%
+   (sigma 1.5, grain 30%, n = 16), up from 62%.
+4. Cut detection limit (pre-registered definition, noise-free val): 5 nm cut length.
+5. Pre-existing drift found: the current generator renders the v1 README header as "(full run, v1; ...)" while the
+   README v1 block says "(full run; ...)"; `reproduce.py --version v1` would change that line. Not touched.

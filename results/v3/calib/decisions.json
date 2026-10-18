@@ -1,0 +1,144 @@
+{
+  "version": "v3",
+  "data": "synthetic",
+  "split": "val (Manhattan)",
+  "seed": 0,
+  "test_seed": 20261018,
+  "pipeline_cfg": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0779973055279618,
+    "e_star": 2.5748902690949445,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.46093693673947
+  },
+  "event_rule_cfg": {
+    "rule": "v3_events",
+    "pair_dist": 30.0,
+    "m_merge": 0.6,
+    "normalise": false,
+    "m_norm": 0.0,
+    "body_radius": 6.0,
+    "m_cut": 0.4,
+    "e_edge": null
+  },
+  "criterion": "max killer F1 pooled over val doses x (LER sigma, grain) cells s.t. nominal-cell suppression >= v2 floor",
+  "suppression_floor_v2": 0.7083333333333334,
+  "chosen": {
+    "m_merge": 0.6,
+    "m_norm": null,
+    "m_cut": 0.4,
+    "e_edge": null,
+    "f1": 0.8970073843762145,
+    "suppression_nominal": 1.0,
+    "n": 2592.0,
+    "n_killer": 1296.0,
+    "n_nuisance_nominal": 48.0,
+    "n_options": 1.0
+  },
+  "near_miss_budget": 0.05,
+  "near_miss_constraint": "every val cell sigma (0.5, 1.0, 1.5) x grain (0.0, 0.15, 0.3)",
+  "grids": {
+    "m_merge": [
+      0.2,
+      0.22,
+      0.24,
+      0.26,
+      0.28,
+      0.3,
+      0.32,
+      0.34,
+      0.36,
+      0.38,
+      0.4,
+      0.42,
+      0.44,
+      0.46,
+      0.48,
+      0.5,
+      0.52,
+      0.54,
+      0.56,
+      0.58,
+      0.6,
+      0.62,
+      0.64,
+      0.66,
+      0.68,
+      0.7,
+      0.72,
+      0.74,
+      0.76,
+      0.78,
+      0.8
+    ],
+    "m_norm": [
+      null,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "m_cut": [
+      null,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6
+    ],
+    "e_edge": [
+      null,
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ]
+  },
+  "fixed_a_priori": {
+    "pair_dist_px": 30.0,
+    "body_radius_px": 6.0,
+    "tau": 0.35,
+    "field": "template",
+    "pre_smooth_px": 1.0,
+    "region_tol_px": 8
+  },
+  "v3_cfg": {
+    "quick": false,
+    "seed": 0,
+    "test_seed": 20261018,
+    "val_layouts": 8,
+    "val_dies": 2,
+    "sel_doses": [
+      20,
+      50,
+      200
+    ],
+    "cells_sigma": [
+      0.5,
+      1.0,
+      1.5
+    ],
+    "cells_grain": [
+      0.0,
+      0.15,
+      0.3
+    ],
+    "nominal": [
+      1.0,
+      0.15
+    ],
+    "workers": 6,
+    "n_boot": 1000
+  },
+  "n_val_patches": 2592
+}

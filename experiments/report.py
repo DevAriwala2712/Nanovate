@@ -14,6 +14,7 @@ import pandas as pd
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
 V1_START, V1_END = "<!-- RESULTS_V1:START -->", "<!-- RESULTS_V1:END -->"
 DAY0_START, DAY0_END = "<!-- DAY0:START -->", "<!-- DAY0:END -->"
+V3_START, V3_END = "<!-- RESULTS_V3:START -->", "<!-- RESULTS_V3:END -->"
 METHOD_NAMES = {"verifier": "Verifier (ours)", "d2d_single": "Die-to-die (single)", "d2d_double": "Die-to-die (double)", "cnn": "CNN (Manhattan-trained)"}
 
 
@@ -43,13 +44,25 @@ def render_tables(root: str | Path) -> str:
     parts: list[str] = []
     dec = root / "calib" / "decisions.json"
     mode = "quick (small n, smoke-level)" if "quick" in root.parts else "full"
-    version = "v2" if "v2" in root.parts else "v1"
+    version = "v3" if "v3" in root.parts else "v2" if "v2" in root.parts else "v1"
     head = f"_All numbers below are **synthetic data** ({mode} run, {version}; 95% percentile-bootstrap CIs in brackets, n beside every number)._"
     if version == "v2":
         head += ("\n\n_v2 is a **post-hoc revision**: its fixes were designed after the v1 test results were seen "
                  "(splice-seam holes, LER-robust near-miss selection, faster calibration; see `docs/V2_FIXES.md`). "
                  "Every v2 choice was made on Manhattan val only and the targets are unchanged; v1 numbers are kept below._")
-    if dec.exists():
+    if version == "v3":
+        head += ("\n\n_v3 replaces the single global tau for **merges** with a per-gap rule against the template-expected merge level, "
+                 "and calls a patch from its **located events** (no Delta-beta sum, so a seen bridge is never cancelled); cuts and necks keep "
+                 "v2's rule (an optical limit, see `docs/V3_PHASE1_DIAGNOSIS.md`). Every v3 choice was made on Manhattan val only and evaluated "
+                 "once on a **fresh test seed**; targets are unchanged; v2 and v1 numbers are kept below._")
+    if dec.exists() and version == "v3":
+        d = json.loads(dec.read_text())
+        c, r = d["pipeline_cfg"], d["event_rule_cfg"]
+        head += (f"\n\n_Verifier config frozen on Manhattan val: v2 field / region / tau {c['tau']}; merge margin {r['m_merge']}, "
+                 f"grain normalisation {'m_norm ' + str(r['m_norm']) if r['normalise'] else 'off'}, per-neck cut margin {r['m_cut']}, "
+                 f"protrusion edge level {r['e_edge']}; d* {c['d_star']}, e* {c['e_star']}, z* {c['z_star']} "
+                 f"(val killer F1 {d['chosen']['f1']:.2f}, n={int(d['chosen']['n'])}); test seed {d['test_seed']}._")
+    elif dec.exists():
         d = json.loads(dec.read_text())
         c = d["pipeline_cfg"]
         head += (f"\n\n_Verifier config frozen on Manhattan val: field `{c['field_option']}`, region `{c['region_mode']}`, tau {c['tau']}, "
@@ -77,7 +90,11 @@ def render_tables(root: str | Path) -> str:
     if d3 is not None:
         v = d3[d3.method == "verifier"]
         if len(v):
-            tv.append(["3 Zero-shot geometry", "F1 drop A -> B/C <= 5 points", "; ".join(f"{r.test_family}: {r.drop_points:+.1f} pts" for r in v.itertuples()), _met((v.drop_points <= 5).all())])
+            if version == "v3":  # report the change (B/C minus A): positive = improved, so "-7.3 pts" no longer reads as a loss
+                meas = "; ".join(f"{r.test_family}: {-r.drop_points:+.1f} pts ({'improved' if r.drop_points < 0 else 'dropped'})" for r in v.itertuples())
+            else:
+                meas = "; ".join(f"{r.test_family}: {r.drop_points:+.1f} pts" for r in v.itertuples())
+            tv.append(["3 Zero-shot geometry", "F1 drop A -> B/C <= 5 points", meas, _met((v.drop_points <= 5).all())])
     if e4 is not None:
         v = e4[(e4.method == "verifier_with_M3") & (e4.kind == "all") & (e4.metric == "unchanged")]
         if len(v):
@@ -133,7 +150,10 @@ def render_tables(root: str | Path) -> str:
         rows = [[name, *[_ci(*(lambda r: (r.f1.iloc[0], r.ci_lo.iloc[0], r.ci_hi.iloc[0], r.n.iloc[0]))(e3[(e3.method == m) & (e3.family == f)])) for f in fams]]
                 for m, name in METHOD_NAMES.items()]
         t = _md(["Method", *fams], rows)
-        if d3 is not None:
+        if d3 is not None and version == "v3":
+            t += "\n\nF1 change vs Manhattan (points, 95% CI; positive = better on the new layout): " + "; ".join(
+                f"{METHOD_NAMES.get(r.method, r.method)} -> {r.test_family}: {-r.drop_points:+.1f} [{-r.ci_hi_points:+.1f}, {-r.ci_lo_points:+.1f}]" for r in d3.itertuples())
+        elif d3 is not None:
             t += "\n\nF1 drop vs Manhattan (points, 95% CI): " + "; ".join(
                 f"{METHOD_NAMES.get(r.method, r.method)} -> {r.test_family}: {r.drop_points:+.1f} [{r.ci_lo_points:+.1f}, {r.ci_hi_points:+.1f}]" for r in d3.itertuples())
         parts.append("#### Exp 3 - zero-shot geometry (killer F1)\n\n" + t)
