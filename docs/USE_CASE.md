@@ -4,6 +4,10 @@
 verifier sorts review-SEM sites into killers, near-misses and harmless roughness from the CAD and three scribe
 images, and says why for every call; today's trained classifiers do not exist yet at that point.
 
+**Measured caveat.** The advantage depends on the layout. On the via layout a Manhattan-trained CNN needed many
+labelled via images before it matched the verifier; on the curvy layout it already tied with none. The label
+break-even table below gives the numbers.
+
 All evidence below is from the synthetic testbed (see the README's limitations). The numbers in the tables are
 generated from the result CSVs; this page contains no hand-typed results.
 
