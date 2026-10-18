@@ -3,6 +3,7 @@
   python scripts/reproduce.py --quick     # small n, a few minutes, writes results/v2/quick/ (README untouched)
   python scripts/reproduce.py             # full v2 run, writes results/v2/, rewrites the README v2 table
   python scripts/reproduce.py --version v1   # the first, pre-registered run: results/, README v1 table
+  python scripts/reproduce.py --version v3   # v3: event rule selected on val (results/v3/calib), Exp 1-6 on the fresh test seed
 
 v1 is the pre-registered first run; v2 adds post-hoc fixes chosen on Manhattan val only (docs/V2_FIXES.md).
 
@@ -32,9 +33,17 @@ def main() -> None:
     ap.add_argument("--skip-select", action="store_true", help="reuse results/[quick/]calib/decisions.json")
     ap.add_argument("--only", default="", help="comma-separated subset, e.g. exp2,exp5")
     ap.add_argument("--update-readme", action="store_true", help="rewrite the README table even for a --quick run")
-    ap.add_argument("--version", default="v2", choices=("v1", "v2"), help="v1 = first pre-registered run, v2 = post-hoc fixes")
+    ap.add_argument("--version", default="v2", choices=("v1", "v2", "v3"), help="v1 = first pre-registered run, v2 = post-hoc fixes")
     ap.add_argument("--breakeven-weights", default="", help="dir with manifest.json + weights from notebooks/breakeven_colab.ipynb")
     a = ap.parse_args()
+    if a.version == "v3":  # own selection + runner; v1 / v2 paths below are unchanged
+        from experiments import v3_run, v3_select, v3_val_report
+        if not a.skip_select:
+            c = v3_select.V3Cfg.quick_cfg() if a.quick else v3_select.V3Cfg()
+            v3_select.run(c)
+            v3_val_report.run(c)
+        v3_run.run(a.quick, a.only)
+        return
     cfg = ExpCfg.quick(a.version) if a.quick else ExpCfg.full(a.version)
     root = select_config.results_root(cfg)
     t0 = time.time()

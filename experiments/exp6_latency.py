@@ -59,12 +59,13 @@ def run(cfg: ExpCfg, ctx: Context | None = None) -> pd.DataFrame:
     add("cnn batch 1 (default threads)", df.ms_cnn)
 
     # Module 2 stack cost per patch, K = 32 same-layout dies
-    L = get_layout("manhattan", "test", 0, tcfg, cfg.seed)
-    stack = [make_sample("manhattan", "test", 0, k, "nuisance", tcfg, cfg.seed, layout=L).image for k in range(32)]
+    tseed = ctx.split_seed("test") if hasattr(ctx, "split_seed") else cfg.seed   # v3: fresh test seed; v1/v2: cfg.seed
+    L = get_layout("manhattan", "test", 0, tcfg, tseed)
+    stack = [make_sample("manhattan", "test", 0, k, "nuisance", tcfg, tseed, layout=L).image for k in range(32)]
     cal = ctx.cal(tcfg)
     from dataclasses import replace
     pcs = replace(ctx.pc, use_stack=True)
-    t0 = time.perf_counter(); verify_stack(stack, L.cad, cal, ctx.win, pcs); add("verifier: stack path total per patch (K=32)", [(time.perf_counter() - t0) * 1e3 / 32])
+    t0 = time.perf_counter(); verify_stack(stack, L.cad, cal, ctx.win, pcs); add("verifier: stack path total per patch (K=32)" + (" (v2 rule)" if hasattr(ctx, "split_seed") else ""), [(time.perf_counter() - t0) * 1e3 / 32])
 
     # CNN latency, batch 1 and 64, 1 thread vs all threads
     imgs = np.stack(stack[:32] + stack[:32]); cads = np.stack([L.cad] * 64)

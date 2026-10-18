@@ -137,3 +137,14 @@ def test_report_v2_block_still_byte_identical_and_v3_exp3_wording(tmp_path):
     pd.read_csv("results/v2/exp3/f1_drop.csv").to_csv(d / "f1_drop.csv", index=False)
     out = report.render_tables(tmp_path / "v3")
     assert "via: +7.3 pts (improved)" in out and "curvy: +3.7 pts (improved)" in out
+
+
+def test_v3_context_routes_fresh_test_seed_and_keeps_val_on_seed0():
+    from experiments.common import ExpCfg
+    from experiments.v3_harness import V3Context
+    ctx = V3Context(ExpCfg.full("v3"))
+    dec = json.load(open("results/v3/calib/decisions.json"))
+    assert ctx.split_seed("test") == dec["test_seed"] != 0 and ctx.split_seed("val") == 0
+    q = V3Context(ExpCfg.quick("v3"))
+    assert q.split_seed("test") != dec["test_seed"]          # smoke runs never touch the official test seed
+    assert ctx.rc_sec.m_cut is None and ctx.rc.m_cut == dec["event_rule_cfg"]["m_cut"]
