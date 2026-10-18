@@ -479,3 +479,9 @@ saddle values), `experiments/v3_phase1.py`, `scripts/v3_phase1_report.py`. 17 ne
 
 ### Next
 Stop Point 1: decision on Phase 2 scope (see the diagnosis conclusion).
+
+### Phase 2 design (draft, `docs/V3_PHASE2_DESIGN.md`), waiting at Stop Point 2
+Val-only design probe (`scripts/v3_probes/design_probe.py`, noise-free, n = 96 bridge+filament per grain level):
+bridge vs filament merge saddle, fewest errors of any threshold: grain 15% 3/96 (AUC 0.995), grain 30% 7/96 (AUC 0.983);
+normalising by the defect body level: 4/96 and 5/96. Grain-dimmed bridges are mostly a threshold-placement problem
+noise-free; Exp 1 is noisy, so this is an optimistic bound. The filament-read-as-split cue was not measured (probe gap).
