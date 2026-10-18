@@ -1,0 +1,9 @@
+s,blur_scale,pair,n,n_pos,min_errors_any_threshold,auc
+1,1.0,bridge vs filament,96,48,3,0.9952256944444444
+1,1.0,open vs notch,95,47,25,0.8164893617021277
+2,1.0,bridge vs filament,96,48,4,0.9917534722222222
+2,1.0,open vs notch,95,47,25,0.8200354609929078
+3,1.0,bridge vs filament,96,48,4,0.9908854166666666
+3,1.0,open vs notch,95,47,25,0.8249113475177305
+2,0.5,bridge vs filament,96,48,7,0.9848090277777778
+2,0.5,open vs notch,95,47,4,0.9818262411347518

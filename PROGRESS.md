@@ -438,3 +438,44 @@ Findings:
   Reported as is; the day-0 claim holds for the via layout, not for every new layout.
 - **Few labels make the CNN worse before better**: at k = 12 the fine-tuned CNN drops below its own k = 0 F1 (via 0.60-0.69 vs 0.74), and the seed
   spread is large (via labelled-threshold 0.38-0.76). A day-0 user with a handful of labels would be worse off fine-tuning.
+
+---
+
+## v3 Phase 0 audit + Phase 1: ceiling diagnosis (`docs/NEXT_PATHS.md`, `docs/V3_PHASE1_DIAGNOSIS.md`)
+Status: Phase 1 done, waiting at Stop Point 1. Manhattan **val only**; test split not generated. Synthetic data.
+v1 / v2 results, CSVs and README untouched (`git diff` on README.md and results/ is empty).
+
+### Phase 0 audit
+- Not done: v2 release tag (no git tags exist); Exp 3 wording (README v2 table still says "via: -7.3 pts"); demo script
+  with a CNN-miss case, a near-miss-only case and a failure case (no such curated list in the repo).
+- Done: demo app (commits cedd59c..9c51bf1).
+- Outside the repo (not attempted): GitHub "About" tagline, creating the release, PPT slide 5 (deck not in the repo).
+- Conflict, not resolved: the Exp 3 wording fix changes the generated v2 README block, which the v3 brief requires to stay
+  byte-identical. Left unchanged pending a decision.
+
+### Built
+`testbed/resample.py` (same wafer at s x s sub-pixels per nm, optics fixed in nm; bit-identical at s = 1),
+`diagnostics.py` (instrumented frozen v2 verifier with px-defined parameters rescaled, Delta-beta(tau) curve, defect
+saddle values), `experiments/v3_phase1.py`, `scripts/v3_phase1_report.py`. 17 new tests (`tests/test_v3_diagnostics.py`).
+
+### Measured (val, n = 288, 48 per kind, noise-free, dose 50)
+- Noise-free killer F1 at 1x / 2x / 3x sampling: 0.85 [0.81, 0.89] / 0.85 [0.81, 0.89] / 0.84 [0.80, 0.89]. Flat.
+- Supplementary, beam + bloom halved in nm (2x sampling): 0.92 [0.88, 0.95].
+- 46 wrong killer flags at 1x: 13 missed killers (bridge 5, open 8) and 33 false killers (notch 23, filament 8, nuisance 2).
+  45/46 are recoverable by a per-sample oracle tau; the best single in-sample tau gives only F1 0.87.
+- Separability of the defect saddle (fewest errors of ANY threshold): bridge vs filament 3/96 (AUC 0.995);
+  open vs notch 25/95 (AUC 0.82) at 1x, 2x and 3x alike; 4/95 with halved blur.
+
+### Surprises
+1. The noise-free ceiling is driven more by **false killers** (33, mostly 2-3 nm-remaining notches called opens) than by
+   missed killers (13). NEXT_PATHS frames it as "misses".
+2. Two of five bridge "misses" are not missed at the bridge: the merge is seen, but a counted feature elsewhere in the
+   patch cancels it in Delta-beta. Six filaments read as a detached particle (thin base dims), not as a bridge.
+3. The decision rule in NEXT_PATHS ("F1 flat across sampling -> logic-limited") cannot detect an optical limit,
+   because sampling at fixed blur in nm does not change resolution. The oracle-tau test is also weak: with one tau per
+   patch nearly everything is recoverable. Both literal signals say "logic-limited"; the cut class is not.
+4. The v2 README sentence "killers missed even noise-free (below this verifier's optical resolution)" is wrong for
+   bridges. Not edited (v2 byte-identical); corrected in V3_PHASE1_DIAGNOSIS.md.
+
+### Next
+Stop Point 1: decision on Phase 2 scope (see the diagnosis conclusion).
