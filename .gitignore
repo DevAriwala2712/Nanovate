@@ -7,3 +7,5 @@ results/cache/
 *.egg-info/
 results/quick/
 results/v2/quick/
+results/v2/breakeven_weights/
+.superpowers/
