@@ -48,3 +48,39 @@ def test_breakeven_train_smoke(smoke_run):
     assert runs[("via", 0)]["weights"] is None
     assert (smoke_run / runs[("via", 12)]["weights"]).exists() and len(runs[("via", 12)]["thr_idx"]) == 3
     assert m["pool"] == {"layouts": 2, "dies": 1, "seed": 0}
+
+
+def test_breakeven_k_helper():
+    from experiments.breakeven import breakeven_k
+    assert breakeven_k({0: 0.70, 12: 0.80, 24: 0.90}, 0.88) == 24
+    assert breakeven_k({0: 0.70, 12: 0.80}, 0.88) == "none"
+    assert breakeven_k({0: 0.90, 12: 0.95}, 0.88) == 0
+
+
+def _tiny_cfg():
+    from experiments.common import ExpCfg
+    return ExpCfg(quick=True, layouts=1, dies=1, n_boot=20, doses=(50,), exp1_sigmas=(1.0,), exp1_grains=(0.0,), exp5_dies=1,
+                  exp6_calib_runs=1, exp6_patches=1, val_layouts=1, val_dies=1)
+
+
+def test_breakeven_eval_rows_k0_matches_m6_and_missing_weights(smoke_run, tmp_path, monkeypatch):
+    import shutil
+    from experiments import breakeven as be
+    from nanovate.baselines.cnn import load_cnn, predict_proba
+    from nanovate.config import TestbedCfg
+    from nanovate.testbed.dataset import KINDS, make_sample
+    from experiments.select_config import with_dose
+    from experiments.common import f1_score
+    monkeypatch.setenv("NANOVATE_RESULTS_ROOT", str(tmp_path))
+    wdir = tmp_path / "w"; shutil.copytree(smoke_run, wdir)
+    m = json.loads((wdir / "manifest.json").read_text())
+    (wdir / m["runs"][1]["weights"]).unlink()                      # simulate a partial Colab run
+    tab = be.run(_tiny_cfg(), wdir, verifier_csv="results/v2/exp3/geometry_f1.csv")
+    k12 = tab[(tab.k == 12)]
+    assert k12.missing.all() and k12.f1.isna().all()
+    s = [make_sample("via", "test", 0, 0, kind, with_dose(TestbedCfg(), 50), 0) for kind in KINDS]
+    model, _, _ = load_cnn("m6_cnn/cnn.pt")
+    p = predict_proba(model, np.stack([x.image for x in s]), np.stack([x.cad for x in s]))
+    k0 = tab[(tab.k == 0) & (tab.threshold_rule == "labelled")].iloc[0]
+    assert k0.threshold == 0.39 and abs(k0.f1 - f1_score(p >= 0.39, np.array([x.killer for x in s]))) < 1e-12
+    assert (tmp_path / "v2" / "quick" / "breakeven" / "summary.csv").exists()
