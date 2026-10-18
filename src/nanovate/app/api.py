@@ -14,6 +14,7 @@ from importlib import metadata
 from pathlib import Path
 
 import numpy as np
+from scipy import ndimage as ndi
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..config import TestbedCfg
 from .engine import Engine, finite
+from .explain import explain, locate
 from .schemas import API_VERSION, HealthResponse, SimulateParams, SimulateResponse, VerifyRequest, VerifyResponse
 from .sources import DOSE_GRID, InputError, InspectionInput, SimulatedSource
 
@@ -199,12 +201,15 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
         overlays = {"field": {"png": png(field), "lo": 0.0, "hi": 1.0, "what": f"conductor probability P ({e.pc.field_option} field) passed to Module 4"},
                     "sdf_energy": {"png": png(emap, 0.0, e_hi), "lo": 0.0, "hi": e_hi, "offset": res["overlays"]["window"][0],
                                    "what": "Module 3 SDF tension energy on the central window (display; max feeds the near-miss rule)"},
+                    "cad_outline": {"png": png(inp.cad ^ ndi.binary_erosion(inp.cad, border_value=1)), "what": "CAD conductor edges"},
                     "window": res["overlays"]["window"]}
         out = {**envelope(request), "input_id": inp.input_id, "seed": inp.meta.seed, "provenance": inp.meta.provenance,
                "source_type": inp.meta.source_type, "params": inp.meta.params, "warnings": list(inp.warnings),
                "verifier": finite(verifier), "cnn": finite({k: x for k, x in cnn.items()}), "d2d": finite(d2d), "truth": truth,
                "agreement": agreement, "calibration": finite({"layer_id": cal["layer_id"], **res["levels"]}),
                "images": images_block(inp), "overlays": overlays, "runtime": finite(runtime)}
+        out["locator"] = finite(locate(field, inp.cad, v["reason"]["delta_betti"], emap, e.win))
+        out["explanation"] = explain(out)
         if req.include_arrays:
             out["arrays"] = {"image": b64_array(inp.image), "cad": b64_array(inp.cad), "field": b64_array(field), "sdf_energy": b64_array(emap)}
         return out

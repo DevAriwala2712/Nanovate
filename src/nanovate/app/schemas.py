@@ -83,5 +83,7 @@ class VerifyResponse(Envelope):
     calibration: dict[str, Any]
     images: dict[str, Any]
     overlays: dict[str, Any]
+    locator: dict[str, Any] = Field(description="display-only site locator; never feeds a verdict")
+    explanation: dict[str, list[str]]
     runtime: dict[str, Any] = Field(description="cache state and timings; the only fields that may differ between identical requests")
     arrays: Optional[dict[str, Any]] = None

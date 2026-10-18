@@ -451,6 +451,15 @@
   .agree-none { color: var(--text-dim); }
   #live-canvas-wrap { flex: 1; position: relative; min-height: 0; }
   #live-canvas { display: block; width: 100%; height: 100%; }
+  #live-explain { max-height: 104px; overflow: auto; border-bottom: 1px solid var(--border); background: var(--bg-deep); padding: 4px 10px 6px; flex-shrink: 0; }
+  #live-explain:empty { display: none; }
+  .xp-group { display: grid; grid-template-columns: 86px 1fr; gap: 6px; padding: 2px 0; }
+  .xp-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); padding-top: 2px; }
+  .xp-line { font-size: 12px; line-height: 1.45; color: var(--text); }
+  .xp-line[data-hl], .insp-field[data-hl] { cursor: pointer; }
+  .xp-line[data-hl]:hover, .insp-field[data-hl]:hover { background: var(--bg-hover); }
+  .xp-line.hl, .insp-field.hl { background: var(--bg-selected); outline: 1px solid var(--bg-selected-border); outline-offset: -1px; }
+  .layer-sep { height: 22px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); background: var(--bg-header); border-bottom: 1px solid var(--border); }
   .spinner { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--border-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -1px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -563,6 +572,7 @@
       <div id="live-view">
         <div id="live-banner"></div>
         <div id="live-cards"></div>
+        <div id="live-explain"></div>
         <div id="live-canvas-wrap"><canvas id="live-canvas"></canvas></div>
       </div>
       <div class="vp-overlay" id="vp-coords"></div>
@@ -717,6 +727,10 @@
       { id: 'cad', name: 'CAD', visible: true }, { id: 'wafer', name: 'Wafer W (truth)', visible: true },
       { id: 'sem', name: 'SEM image', visible: true }, { id: 'field', name: 'Conductor field', visible: true },
     ],
+    overlays: [   // drawn on the live SEM panel; display aids only
+      { id: 'outline', name: 'CAD outline', visible: true }, { id: 'energy', name: 'SDF energy heatmap', visible: false },
+      { id: 'fieldov', name: 'Conductor field', visible: false }, { id: 'sites', name: 'Δβ site + energy peak', visible: true },
+    ],
   };
 
   function log(level, stage, msg) {
@@ -818,12 +832,15 @@
 
   // ── Layer toggles (which panels Patch Compare shows) ──
   function renderLayers() {
-    $('#layer-list').innerHTML = state.layers.map((l, i) => `
-      <div class="layer-row" data-idx="${i}" style="cursor:pointer">
-        <button class="layer-vis ${l.visible ? 'on' : ''}" data-idx="${i}">${l.visible ? '<svg viewBox="0 0 14 14"><path d="M1 7 Q7 2 13 7 Q7 12 1 7"/><circle cx="7" cy="7" r="2"/></svg>' : '<svg viewBox="0 0 14 14"><path d="M1 7 Q7 2 13 7 Q7 12 1 7"/><path d="M3 3 L11 11"/></svg>'}</button>
-        <span class="layer-name">${l.name}</span></div>`).join('');
+    const eye = (on) => on ? '<svg viewBox="0 0 14 14"><path d="M1 7 Q7 2 13 7 Q7 12 1 7"/><circle cx="7" cy="7" r="2"/></svg>' : '<svg viewBox="0 0 14 14"><path d="M1 7 Q7 2 13 7 Q7 12 1 7"/><path d="M3 3 L11 11"/></svg>';
+    const row = (l, i, grp) => `
+      <div class="layer-row" data-idx="${i}" data-grp="${grp}" style="cursor:pointer">
+        <button class="layer-vis ${l.visible ? 'on' : ''}">${eye(l.visible)}</button>
+        <span class="layer-name">${l.name}</span></div>`;
+    $('#layer-list').innerHTML = state.layers.map((l, i) => row(l, i, 'layers')).join('') +
+      (state.mode === 'live' ? '<div class="layer-sep">Overlays on SEM (display only)</div>' + state.overlays.map((l, i) => row(l, i, 'overlays')).join('') : '');
     $$('#layer-list .layer-row').forEach(r => r.addEventListener('click', () => {
-      const l = state.layers[+r.dataset.idx]; l.visible = !l.visible; renderLayers(); draw();
+      const l = state[r.dataset.grp][+r.dataset.idx]; l.visible = !l.visible; renderLayers(); draw();
     }));
   }
 
@@ -986,7 +1003,7 @@
     $('#vp-mode').textContent = m === 'grid' ? `Sample Grid · ${RUN.split} split, synthetic` : 'Patch Compare';
     $('#vp-legend').style.display = m === 'grid' ? '' : 'none';
     state.zoom = 1; state.panX = 0; state.panY = 0;
-    renderInspector(); renderStatus(); resize();
+    renderLayers(); renderInspector(); renderStatus(); resize();
   }
   $$('[data-mode]').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
 
@@ -1126,7 +1143,7 @@
 
   // ── Live mode: talks to python -m nanovate.app (/api/v1); every number shown comes from the response ──
   const API = '/api/v1';
-  const live = { res: null, busy: false, ctrl: null, health: null, online: null, imgs: {}, lastError: null };
+  const live = { res: null, busy: false, ctrl: null, health: null, online: null, imgs: {}, ov: {}, hl: null, lastError: null };
   const SERVER_DOWN = location.protocol === 'file:'
     ? 'Opened from a file: Live mode needs the app server. Start it from the repository root with <code>python -m nanovate.app</code> and open <code>http://127.0.0.1:8765/</code>. The static grid still works here.'
     : `Server not reachable at ${esc(location.origin)}. The static grid still works. Start it from the repository root with <code>python -m nanovate.app</code>, then press Run again.`;
@@ -1171,11 +1188,36 @@
     $('#live-run').disabled = b; $('#live-random').disabled = b; $('#live-cancel').disabled = !b;
   }
 
+  // Grey PNG -> colour overlay canvas: rgba = colour with alpha = alphaFn(grey 0..1)
+  const hexRgb = (h) => { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
+  function tint(im, colourFn) {
+    const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) { const [r, gg, b, a] = colourFn(p[i] / 255); p[i] = r; p[i + 1] = gg; p[i + 2] = b; p[i + 3] = a; }
+    g.putImageData(d, 0, 0); return c;
+  }
   function loadImgs(res) {
-    const src = { sem: res.images.sem.png, cad: res.images.cad.png, field: res.overlays.field.png };
+    const src = { sem: res.images.sem.png, cad: res.images.cad.png, field: res.overlays.field.png,
+      outline: res.overlays.cad_outline.png, energy: res.overlays.sdf_energy.png };
     if (res.images.wafer) src.wafer = res.images.wafer.png;
-    live.imgs = {};
-    for (const [k, u] of Object.entries(src)) { const im = new Image(); im.onload = () => draw(); im.src = u; live.imgs[k] = im; }
+    const acc = hexRgb(cssVar('--accent')), nm = hexRgb(cssVar('--near-miss')), kl = hexRgb(cssVar('--killer'));
+    const tints = {
+      outline: (v) => [...acc, v > 0.5 ? 230 : 0],
+      fieldov: (v) => [...acc, Math.round(v * 140)],
+      energy: (v) => { const t = Math.min(1, v); return [0, 1, 2].map(j => Math.round(nm[j] + (kl[j] - nm[j]) * t)).concat([Math.round(Math.sqrt(t) * 200)]); },
+    };
+    live.imgs = {}; live.ov = {};
+    for (const [k, u] of Object.entries(src)) {
+      const im = new Image();
+      im.onload = () => {
+        if (k === 'outline') live.ov.outline = tint(im, tints.outline);
+        if (k === 'energy') live.ov.energy = tint(im, tints.energy);
+        if (k === 'field') live.ov.fieldov = tint(im, tints.fieldov);
+        draw();
+      };
+      im.src = u; live.imgs[k] = im;
+    }
   }
 
   async function runLive() {
@@ -1191,7 +1233,7 @@
     const t0 = performance.now();
     try {
       const res = await api('/verify', { method: 'POST', body: JSON.stringify({ simulate: p }), signal: live.ctrl.signal });
-      live.res = res; live.lastError = null; loadImgs(res);
+      live.res = res; live.lastError = null; live.hl = null; loadImgs(res);
       setBanner('', res.warnings.length ? res.warnings.map(esc).join('<br>') : '');
       if (slowFit) checkHealth();
       const d = res.d2d.available ? (res.d2d.single.flagged ? 'flagged' : 'not flagged') : 'n/a';
@@ -1200,7 +1242,7 @@
       if (e.name === 'AbortError') { setBanner('info', 'Cancelled. The server finishes that analysis in the background and discards it; the next run waits for it.'); log('WARN', 'Live', 'Run cancelled by the user'); }
       else if (e.network) { setApi(false); setBanner('error', SERVER_DOWN); log('ERROR', 'Live', 'Server not reachable'); }
       else { live.lastError = e.api; markInvalid(e.api.field); setBanner('error', `<strong>${esc(e.api.code)}</strong>: ${esc(e.api.message)}` + (e.api.request_id ? ` <span style="color:var(--text-dim)">(request ${esc(e.api.request_id)})</span>` : '') + (live.res ? ' <span style="color:var(--text-dim)">The previous result is still shown below.</span>' : '')); log('ERROR', 'Live', `${e.api.code}: ${e.api.message}`); }
-    } finally { live.ctrl = null; setBusy(false); renderCards(); renderInspector(); renderStatus(); draw(); }
+    } finally { live.ctrl = null; setBusy(false); renderCards(); renderExplain(); renderInspector(); renderStatus(); resize(); }
   }
   $('#live-run').addEventListener('click', runLive);
   $('#live-cancel').addEventListener('click', () => live.ctrl && live.ctrl.abort());
@@ -1260,11 +1302,40 @@
       <div class="vcard"><div class="vcard-title">Die-to-die (difference)</div>${d2dHtml}</div>`;
   }
 
+  // Which location a reason refers to: 'sites' (Δβ), 'peak' (SDF energy / peak-z), 'none' (bottleneck: a diagram distance)
+  const HL_NOTE = {
+    sites: 'Δβ site: where the thresholded field joins or cuts conductors (display-only locator).',
+    peak: 'SDF energy peak: the pixel with the largest tension energy.',
+    none: 'The bottleneck distance compares persistence diagrams; it has no single location in the image.',
+  };
+  function setHl(h) {
+    live.hl = live.hl === h ? null : h;
+    $$('#live-explain [data-hl], #inspector-body [data-hl]').forEach(e => e.classList.toggle('hl', e.dataset.hl === live.hl));
+    if (!live.hl) setBanner('', live.res && live.res.warnings.length ? live.res.warnings.map(esc).join('<br>') : '');
+    if (live.hl) setBanner('info', esc(HL_NOTE[live.hl]) + (live.hl === 'sites' && live.res && !live.res.locator.sites.length ? ' No site is marked: the locator found none consistent with Δβ (or Δβ = 0); the verdict itself comes from persistence.' : ''));
+    if (live.hl === 'sites' && live.res && !live.res.locator.sites.length) log('INFO', 'Live', 'No Δβ site is marked: the locator found none consistent with Δβ (or Δβ = 0)');
+    draw();
+  }
+  function hlOf(text) {
+    if (/^β|Verdict .* Δβ/.test(text)) return 'sites';
+    if (/SDF tension energy peaks|Near-miss rule/.test(text)) return 'peak';
+    return null;
+  }
+  function renderExplain() {
+    const r = live.res, el = $('#live-explain');
+    if (!r) { el.innerHTML = ''; return; }
+    const X = r.explanation, grp = (label, lines) => lines.length ? `<div class="xp-group"><div class="xp-label">${label}</div><div>${lines.map(t => {
+      const h = hlOf(t); return `<div class="xp-line" ${h ? `data-hl="${h}" title="Click to show its location"` : ''}>${esc(t)}</div>`; }).join('')}</div></div>` : '';
+    el.innerHTML = grp('Verifier', X.verifier) + grp('Location', X.locator) + grp('CNN', X.cnn) + grp('Die-to-die', X.d2d) + grp('Truth', X.truth);
+    el.querySelectorAll('[data-hl]').forEach(e => e.addEventListener('click', () => setHl(e.dataset.hl)));
+  }
+
   function renderLiveInspector(body) {
     const r = live.res;
     if (!r) { body.innerHTML = `<div style="padding:16px;color:var(--text-dim);font-size:12px">No live result yet. Set the controls and press Run.</div>`; return; }
     const ro = (v) => `<span class="value readonly" title="${esc(v)}">${esc(v)}</span>`;
     const f = (l, v, u) => `<div class="insp-field"><label>${l}</label><div>${v}${u ? ` <span class="unit">${u}</span>` : ''}</div></div>`;
+    const fh = (h, l, v, u) => `<div class="insp-field" data-hl="${h}" title="${esc(HL_NOTE[h])}"><label>${l}</label><div>${v}${u ? ` <span class="unit">${u}</span>` : ''}</div></div>`;
     const sec = (t, inner) => `<div class="insp-section"><div class="insp-section-header"><span class="chev">▼</span> ${t}</div><div class="insp-fields">${inner}</div></div>`;
     const rs = r.verifier.reason, P = r.params, tm = r.runtime.timings_ms;
     body.innerHTML =
@@ -1272,9 +1343,9 @@
         f('Family / kind', ro(`${P.family} / ${P.kind}`)) + f('Split', ro(P.split)) + f('Dose', ro(P.dose), 'e⁻/px') +
         f('LER σ / grain', ro(`${P.ler_sigma} nm / ${P.grain}`)) + f('Shift asked', ro(P.shift ? P.shift.join(', ') : 'drawn (seeded)'), 'px') + f('Warp', ro(P.warp), 'px')) +
       sec('Verifier reason', f('Verdict', `<span class="value verdict-${vclass(r.verifier.verdict)}">${esc(r.verifier.verdict)}</span>`) +
-        f('Δβ (β₀, β₁)', ro(`(${rs.delta_betti})`)) + f('β CAD', ro(`(${rs.beta_ref})`)) + f('β image', ro(`(${rs.beta_img})`)) +
-        f('Bottleneck H0', ro(fmt(rs.bottleneck_h0, 4))) + f('Bottleneck H1', ro(fmt(rs.bottleneck_h1, 4))) +
-        f('Max SDF energy', ro(fmt(rs.max_sdf_energy, 3))) + f('Peak-z', ro(fmt(rs.peak_z, 2))) +
+        fh('sites', 'Δβ (β₀, β₁)', ro(`(${rs.delta_betti})`)) + f('β CAD', ro(`(${rs.beta_ref})`)) + f('β image', ro(`(${rs.beta_img})`)) +
+        fh('none', 'Bottleneck H0', ro(fmt(rs.bottleneck_h0, 4))) + fh('none', 'Bottleneck H1', ro(fmt(rs.bottleneck_h1, 4))) +
+        fh('peak', 'Max SDF energy', ro(fmt(rs.max_sdf_energy, 3))) + fh('peak', 'Peak-z', ro(fmt(rs.peak_z, 2))) +
         f('τ', ro(rs.tau)) + f('d* / e* / z*', ro(`${fmt(rs.d_star)} / ${fmt(rs.e_star, 2)} / ${fmt(rs.z_star, 2)}`)) +
         f('Singleton', ro(rs.singleton ? 'yes (no same-layout stack)' : 'no')) +
         f('Recovered shift', ro(r.verifier.recovered_shift.map(x => x.toFixed(2)).join(', ')), 'px')) +
@@ -1287,6 +1358,27 @@
         f('Topology', ro(fmt(tm.verifier.topology, 1)), 'ms') + f('CNN', ro(fmt(tm.cnn, 1)), 'ms') + f('D2D single', ro(fmt(tm.d2d_single, 1)), 'ms')) +
       sec('Reproducibility', f('Config hash', ro(r.config_hash)) + f('Commit', ro(r.commit)) + f('API', ro(r.api_version)) + f('Request id', ro(r.request_id)));
     body.querySelectorAll('.insp-section-header').forEach(h => h.addEventListener('click', () => h.closest('.insp-section').classList.toggle('collapsed')));
+    body.querySelectorAll('[data-hl]').forEach(e => { e.classList.toggle('hl', e.dataset.hl === live.hl); e.addEventListener('click', () => setHl(e.dataset.hl)); });
+  }
+
+  function drawMarkers(g, r, x, y, size) {
+    const k = size / 256, L = r.locator, emph = (h) => live.hl === h;
+    const sitesOn = state.overlays.find(o => o.id === 'sites').visible || live.hl === 'sites' || live.hl === 'peak';
+    if (!sitesOn) return;
+    g.save(); g.font = '600 10px monospace';
+    if (state.overlays.find(o => o.id === 'sites').visible || emph('sites')) L.sites.forEach(sv => {
+      const [r0, c0, r1, c1] = sv.box, pad = 3;
+      g.strokeStyle = cssVar('--killer'); g.lineWidth = emph('sites') ? 3 : 1.5; g.setLineDash(sv.type === 'join' ? [] : [4, 2]);
+      g.strokeRect(x + (c0 - pad) * k, y + (r0 - pad) * k, (c1 - c0 + 2 * pad) * k, (r1 - r0 + 2 * pad) * k);
+      g.setLineDash([]); g.fillStyle = cssVar('--killer'); g.fillText(`Δβ site (${sv.type})`, x + (c0 - pad) * k, y + (r0 - pad) * k - 3);
+    });
+    if (state.overlays.find(o => o.id === 'sites').visible || emph('peak')) {
+      const p = L.energy_peak, px = x + (p.col + 0.5) * k, py = y + (p.row + 0.5) * k, rad = emph('peak') ? 12 : 8;
+      g.strokeStyle = cssVar('--near-miss'); g.lineWidth = emph('peak') ? 2.5 : 1.5;
+      g.beginPath(); g.arc(px, py, rad, 0, 6.2832); g.moveTo(px - rad - 4, py); g.lineTo(px - rad + 3, py); g.moveTo(px + rad - 3, py); g.lineTo(px + rad + 4, py); g.stroke();
+      g.fillStyle = cssVar('--near-miss'); g.fillText('SDF energy peak', px + rad + 6, py + 4);
+    }
+    g.restore();
   }
 
   function drawLive() {
@@ -1298,8 +1390,12 @@
     const names = { cad: 'CAD', wafer: 'Wafer W (ground truth)', sem: 'SEM image', field: 'Conductor field P' };
     const panels = state.layers.filter(l => l.visible);
     if (!panels.length) return;
-    const cols = Math.min(2, panels.length), rows = Math.ceil(panels.length / cols);
-    const size = Math.max(64, Math.min((w - 40) / cols - 12, (h - 60) / rows - 24)) * state.zoom;
+    let cols = 1, best = 0;   // pick the column count that makes the panels largest
+    for (let c = 1; c <= panels.length; c++) {
+      const rr = Math.ceil(panels.length / c), sz = Math.min((w - 40) / c - 12, (h - 60) / rr - 24);
+      if (sz > best) { best = sz; cols = c; }
+    }
+    const size = Math.max(64, best) * state.zoom;
     panels.forEach((l, i) => {
       const x = 20 + (i % cols) * (size + 12) + state.panX, y = 46 + Math.floor(i / cols) * (size + 24) + state.panY;
       g.fillStyle = '#d0d0d4'; g.fillText(names[l.id] || l.name, x, y - 5);
@@ -1307,6 +1403,14 @@
       const im = live.imgs[l.id];
       if (!im) { g.fillStyle = '#888890'; g.fillText('no ground truth for this input', x + 10, y + size / 2); return; }
       if (im.complete && im.naturalWidth) g.drawImage(im, x, y, size, size);
+      if (l.id === 'sem') {
+        const m0 = r.overlays.sdf_energy.offset / 256 * size;
+        const on = (id) => state.overlays.find(o => o.id === id).visible;
+        if (on('fieldov') && live.ov.fieldov) g.drawImage(live.ov.fieldov, x, y, size, size);
+        if (on('energy') && live.ov.energy) g.drawImage(live.ov.energy, x + m0, y + m0, size - 2 * m0, size - 2 * m0);
+        if (on('outline') && live.ov.outline) g.drawImage(live.ov.outline, x, y, size, size);
+        drawMarkers(g, r, x, y, size);
+      }
       if (['sem', 'field'].includes(l.id)) {
         const m = r.overlays.window[0] / 256 * size; g.strokeStyle = 'rgba(74,158,255,0.7)'; g.setLineDash([4, 3]);
         g.strokeRect(x + m, y + m, size - 2 * m, size - 2 * m); g.setLineDash([]);
