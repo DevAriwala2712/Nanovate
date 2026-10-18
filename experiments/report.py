@@ -13,6 +13,7 @@ import pandas as pd
 
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
 V1_START, V1_END = "<!-- RESULTS_V1:START -->", "<!-- RESULTS_V1:END -->"
+DAY0_START, DAY0_END = "<!-- DAY0:START -->", "<!-- DAY0:END -->"
 METHOD_NAMES = {"verifier": "Verifier (ours)", "d2d_single": "Die-to-die (single)", "d2d_double": "Die-to-die (double)", "cnn": "CNN (Manhattan-trained)"}
 
 
@@ -153,17 +154,86 @@ def render_tables(root: str | Path) -> str:
     return "\n\n".join(parts)
 
 
-def update_readme(readme: str | Path, root: str | Path, markers: tuple[str, str] = (START, END)) -> str:
-    """Replace the text between ``markers`` with freshly rendered tables. Returns the new text."""
+def update_block(path: str | Path, body: str, markers: tuple[str, str]) -> str:
+    """Replace the text between ``markers`` in ``path`` with ``body`` (append a new block if absent). Idempotent."""
     start, end = markers
-    readme = Path(readme)
-    text = readme.read_text()
-    block = f"{start}\n{render_tables(root)}\n{end}"
+    path = Path(path)
+    text = path.read_text()
+    block = f"{start}\n{body}\n{end}"
     if start in text and end in text:
         head, rest = text.split(start, 1)
         _, tail = rest.split(end, 1)
         new = head + block + tail
     else:
         new = text.rstrip("\n") + "\n\n## Results\n\n" + block + "\n"
-    readme.write_text(new)
+    path.write_text(new)
     return new
+
+
+def update_readme(readme: str | Path, root: str | Path, markers: tuple[str, str] = (START, END)) -> str:
+    """Replace the text between ``markers`` with freshly rendered tables. Returns the new text."""
+    return update_block(readme, render_tables(root), markers)
+
+
+DAY0_METHODS = {"verifier": "Verifier (no labels)", "cnn": "CNN (Manhattan-trained)", "d2d_single": "Die-to-die (single)",
+                "d2d_double": "Die-to-die (double)"}
+
+
+def render_day0(root: str | Path) -> str:
+    """The day-0 use-case block: advantages vs disadvantages, the review-queue projection, the label break-even.
+
+    Reads results/v2/{exp3/geometry_f1.csv, exp6/latency.csv, day0_scenario/scenario.csv, breakeven/summary.csv};
+    any missing file drops its part (break-even says "not yet run"). Synthetic data throughout.
+    """
+    root = Path(root)
+    parts = ["_All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates "
+             "(via family, dose 50) with an assumed site mix._"]
+    geo, lat = _read(root, "exp3", "geometry_f1"), _read(root, "exp6", "latency")
+    sc, be = _read(root, "day0_scenario", "scenario"), _read(root, "breakeven", "summary")
+    if geo is not None:
+        def f1(m, fam):
+            r = geo[(geo.method == m) & (geo.family == fam)]
+            return _ci(r.f1.iloc[0], r.ci_lo.iloc[0], r.ci_hi.iloc[0], r.n.iloc[0]) if len(r) else "n/a"
+        lat_of = {}
+        if lat is not None:
+            for key, what in (("cal", "calibration (3 scribe patches, with registration)"), ("ver", "verifier: total per patch (singleton path)"),
+                              ("cnn", "cnn batch 1 (default threads)"), ("d2d", "die-to-die single (align + GAT + stats)")):
+                r = lat[lat.what == what]
+                lat_of[key] = f"{r['median'].iloc[0]:.0f} ms" if len(r) else "n/a"
+        rows = [["Labelled images needed before first use", "none (3 scribe images per layer)", "a labelled training set (Manhattan here)", "labelled val per dose, to fit the rule"],
+                ["F1 on a new layout: via", f1("verifier", "via"), f1("cnn", "via"), f1("d2d_single", "via")],
+                ["F1 on a new layout: curvy", f1("verifier", "curvy"), f1("cnn", "curvy"), f1("d2d_single", "curvy")],
+                ["F1 on the layout the CNN was trained on (Manhattan)", f1("verifier", "manhattan"), f1("cnn", "manhattan"), f1("d2d_single", "manhattan")],
+                ["Setup per layer", lat_of.get("cal", "n/a") + " calibration", "training run (GPU)", "rule fit"],
+                ["Time per patch (this CPU)", lat_of.get("ver", "n/a"), lat_of.get("cnn", "n/a"), lat_of.get("d2d", "n/a")],
+                ["Says why it flagged a site", "yes: delta-beta, bottleneck, SDF energy", "no (a probability)", "no (a difference map)"]]
+        parts.append("#### Day 0 on a new layer: what each option gives you\n\n" + _md(["", "Verifier (ours)", "CNN (Manhattan-trained)", "Die-to-die (single)"], rows)
+                     + "\n\nWhere the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.")
+    if sc is not None:
+        methods = [m for m in DAY0_METHODS if m in set(sc.method)]
+
+        def cell(m, metric, p):
+            r = sc[(sc.method == m) & (sc.metric == metric) & (sc.prevalence == p)]
+            return f"{r['mean'].iloc[0]:.0f} [{max(r.ci_lo.iloc[0], 0):.0f}, {r.ci_hi.iloc[0]:.0f}]" if len(r) else "n/a"
+        p = 0.05
+        labels = [("killers_caught", "Killers caught (flagged KILLER)"), ("killers_flagged_near_miss", "Killers flagged NEAR_MISS (still reviewed)"),
+                  ("killers_missed", "Killers missed (passed as harmless)"), ("harmless_sent_as_killer", "Harmless sites flagged KILLER"),
+                  ("near_miss_flagged", "Near-misses flagged NEAR_MISS (reliability bin)"), ("nuisance_flagged_near_miss", "Harmless sites flagged NEAR_MISS"),
+                  ("sites_to_engineer", "All sites sent to an engineer")]
+        rows = [[lab, *[cell(m, k, p) for m in methods]] for k, lab in labels]
+        n_k = sc[(sc.metric == "killers_total") & (sc.prevalence == p)]["mean"].iloc[0]
+        parts.append(f"#### Review queue: 1,000 flagged sites on a new via layer, {100 * p:.0f}% real killers ({n_k:.0f} sites)\n\n"
+                     + _md(["Sites (95% CI)", *[DAY0_METHODS[m] for m in methods]], rows)
+                     + "\n\nSite mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament "
+                       "(near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.")
+        rows = [[f"{100 * q:.0f}%", *[f"{cell(m, 'killers_missed', q)} / {cell(m, 'harmless_sent_as_killer', q)}" for m in methods]] for q in sorted(set(sc.prevalence)) if q != p]
+        if rows:
+            parts.append("Other prevalences (killers missed / harmless sites flagged KILLER):\n\n" + _md(["Real killers", *[DAY0_METHODS[m] for m in methods]], rows))
+    if be is None:
+        parts.append("#### Label break-even\n\nThe label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run**.")
+    else:
+        rows = [[r.family, r.threshold_rule, f"{r.verifier_f1:.2f}", str(r.breakeven_k), str(r.clearly_better_k), f"{int(r.n_seeds)} seeds, n={int(r.n_test)}"]
+                for r in be.itertuples()]
+        parts.append("#### Label break-even: labelled images of the new layout the CNN needs to match the verifier\n\n"
+                     + _md(["Family", "CNN threshold", "Verifier F1", "Break-even k (seed-mean F1 >= verifier)", "Clearly better k (every seed's CI above)", "n"], rows))
+    return "\n\n".join(parts)

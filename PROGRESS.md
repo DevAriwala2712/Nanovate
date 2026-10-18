@@ -402,3 +402,25 @@ Energy normalised by LER estimates (over-corrects at low LER); edge-band masking
 ### Next (scope decisions, not started)
 Model-based local hypothesis test (cut vs neck) on the Module-1 template; consensus-based alignment for Exp 4; seed variance (3 seeds + second CNN run);
 real-data path: independent simulator (Nebula) on the existing testbed wafers, then Carinthia-S for particle/noise checks, then a line/space set with GDS from a partner.
+
+---
+
+## Part 1 (in progress): the day-0 value case (`docs/superpowers/specs/2026-10-18-next-steps-design.md`)
+Branch `day0-value-case`. `pytest -q` = 184 passed (14 new). Synthetic data.
+
+### Built
+- `baselines/breakeven.py` (subsets nested in k, threshold labels counted in k, fixed 300-step fine-tune schedule), warm-start `train_cnn(init=)`,
+  family-aware `make_cnn_train_set(family=)`; `scripts/breakeven_train.py` + `notebooks/breakeven_colab.ipynb` (Colab, not yet run);
+  `experiments/breakeven.py` (local evaluation; not yet run: needs the Colab weights).
+- `experiments/day0_scenario.py`: review-queue **projection** from the v2 Exp 3 via test rates (dose 50, n = 24 per kind), site mix assumed
+  (killers equal thirds; harmless 90% nuisance / 5% notch / 5% filament); `results/v2/day0_scenario/`.
+- `report.render_day0` -> generated blocks in README ("Why use this: the day-0 case") and `docs/USE_CASE.md`.
+
+### Measured (projection, 1,000 sites, 5% killers; numbers generated in README / USE_CASE.md)
+The verifier misses the fewest killers on a new via layer (2 [0, 4] vs CNN 12 [9, 16], die-to-die 19-24) and flags the fewest harmless
+sites as killers (22 [12, 34] vs 46-103), but its total queue is the largest (179 [142, 250] vs 71-133) because it also sends a NEAR_MISS
+bin: 73 real near-misses plus 36 [0, 107] harmless sites. Whether that bin is a feature (reliability screening) or cost depends on the fab;
+both are shown. The wide CI on harmless NEAR_MISS comes from n = 24 nuisance samples.
+
+### Next
+Run `notebooks/breakeven_colab.ipynb` on Colab (user), then `python scripts/reproduce.py --skip-select --only day0 --breakeven-weights <dir>`.

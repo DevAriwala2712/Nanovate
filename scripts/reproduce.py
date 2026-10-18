@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from experiments import exp1_nuisance, exp2_dose, exp3_geometry, exp4_misalignment, exp5_nearmiss, exp6_latency, report, select_config  # noqa: E402
+from experiments import breakeven, day0_scenario, exp1_nuisance, exp2_dose, exp3_geometry, exp4_misalignment, exp5_nearmiss, exp6_latency, report, select_config  # noqa: E402
 from experiments.common import ExpCfg  # noqa: E402
 from experiments.harness import Context  # noqa: E402
 
@@ -33,6 +33,7 @@ def main() -> None:
     ap.add_argument("--only", default="", help="comma-separated subset, e.g. exp2,exp5")
     ap.add_argument("--update-readme", action="store_true", help="rewrite the README table even for a --quick run")
     ap.add_argument("--version", default="v2", choices=("v1", "v2"), help="v1 = first pre-registered run, v2 = post-hoc fixes")
+    ap.add_argument("--breakeven-weights", default="", help="dir with manifest.json + weights from notebooks/breakeven_colab.ipynb")
     a = ap.parse_args()
     cfg = ExpCfg.quick(a.version) if a.quick else ExpCfg.full(a.version)
     root = select_config.results_root(cfg)
@@ -46,9 +47,22 @@ def main() -> None:
         print(f"== {name} ==", flush=True)
         EXPERIMENTS[name].run(cfg, ctx)
         print(f"   {name} done in {time.time() - t1:.0f}s", flush=True)
+    if a.version == "v2" and (not a.only or "day0" in a.only.split(",")):
+        print("== day0 scenario ==", flush=True)
+        day0_scenario.run(cfg)
+        if a.breakeven_weights:
+            print("== label break-even ==", flush=True)
+            breakeven.run(cfg, a.breakeven_weights)
     if not a.quick or a.update_readme:
-        report.update_readme("README.md", root, (report.START, report.END) if a.version == "v2" else (report.V1_START, report.V1_END))
-        print("README results table rewritten from", root)
+        if a.version == "v2" and (not a.only or set(a.only.split(",")) - {"day0"}):
+            report.update_readme("README.md", root, (report.START, report.END))
+        elif a.version == "v1":
+            report.update_readme("README.md", root, (report.V1_START, report.V1_END))
+        if a.version == "v2":
+            day0 = report.render_day0(root)
+            for doc in ("README.md", "docs/USE_CASE.md"):
+                report.update_block(doc, day0, (report.DAY0_START, report.DAY0_END))
+        print("README / docs/USE_CASE.md generated blocks updated from", root)
     else:
         print("quick run: README untouched; tables preview ->", root / "tables.md")
         (root / "tables.md").write_text(report.render_tables(root))
