@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nanovate UI self-test</title>
+<style>
+  :root { --bg-deep: #1a1a1c; --bg-panel: #222226; --border: #3a3a40; --text: #d0d0d4; --text-dim: #888890; --ok: #50a060; --danger: #e05050;
+          --font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace; }
+  body { background: var(--bg-deep); color: var(--text); font-family: var(--font-mono); font-size: 12px; margin: 0; padding: 12px; }
+  h1 { font-size: 13px; margin: 0 0 8px; }
+  #summary { margin-bottom: 8px; }
+  .pass { color: var(--ok); } .fail { color: var(--danger); }
+  table { border-collapse: collapse; width: 100%; }
+  td { border-bottom: 1px solid var(--border); padding: 3px 6px; vertical-align: top; }
+  #stage { position: absolute; left: -10000px; top: 0; }
+  iframe { border: 0; background: var(--bg-panel); }
+</style>
+</head>
+<body>
+<h1>Nanovate UI self-test (serve with <code>python -m nanovate.app</code>, open /selftest.html)</h1>
+<div id="summary">running…</div>
+<table id="results"></table>
+<div id="stage"></div>
+<script>
+/* UI unit tests for frontend/index.html. No dependencies: each test loads the real page in an iframe of a fixed size,
+   optionally replaces its fetch with a mock built from one real /api/v1/verify response, drives the DOM and asserts.
+   Results: window.__selftest = {done, passed, failed, results}. */
+(async function () {
+  'use strict';
+  const results = [];
+  const PAGE = new URLSearchParams(location.search).get('page') || 'index.html';   // ?page= runs the tests against another copy
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const assert = (c, msg) => { if (!c) throw new Error(msg); };
+
+  async function load(w = 1280, h = 800) {
+    const f = document.createElement('iframe');
+    f.width = w; f.height = h; f.src = PAGE + '?t=' + Date.now() + Math.random();
+    document.getElementById('stage').appendChild(f);
+    await new Promise(r => f.addEventListener('load', r, { once: true }));
+    await sleep(250);
+    const win = f.contentWindow, doc = f.contentDocument;
+    win.__errs = [];
+    win.addEventListener('error', e => win.__errs.push(e.message));
+    win.addEventListener('unhandledrejection', e => win.__errs.push(String(e.reason && e.reason.message || e.reason)));
+    return { f, win, doc, q: (s) => doc.querySelector(s), qa: (s) => [...doc.querySelectorAll(s)] };
+  }
+  const unload = (P) => P.f.remove();
+  function respond(win, status, body) {
+    return new win.Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'x-request-id': 'test' } });
+  }
+  function mock(P, handler) { P.win.fetch = async (url, opts) => handler(String(url), opts || {}); }
+  async function waitIdle(P, ms = 30000) {
+    const t0 = Date.now();
+    await sleep(30);
+    while (P.q('#live-run').disabled && Date.now() - t0 < ms) await sleep(50);
+    await sleep(60);
+  }
+  async function runLive(P) { P.q('[data-mode="live"]').click(); await sleep(50); P.q('#live-run').click(); await waitIdle(P); }
+
+  function overflow(P, roots) {
+    const out = [], win = P.win;
+    for (const root of roots) for (const e of [P.q(root), ...P.qa(root + ' *')]) {
+      if (!e) continue;
+      const cs = win.getComputedStyle(e);
+      if (cs.display === 'none' || (e.offsetParent === null && cs.position !== 'fixed')) continue;
+      if (['CANVAS', 'svg', 'path', 'circle', 'rect', 'OPTION'].includes(e.tagName)) continue;
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      if (e.scrollWidth > e.clientWidth + 2 && !['auto', 'scroll'].includes(cs.overflowX) && cs.textOverflow !== 'ellipsis' && e.clientWidth > 0)
+        out.push(`${root}: ${e.tagName.toLowerCase()}.${e.className} ${e.clientWidth}<${e.scrollWidth}`);
+      if ((e.tagName === 'SELECT' || (e.tagName === 'INPUT' && e.type !== 'checkbox'))) {
+        const t = e.tagName === 'SELECT' ? e.options[e.selectedIndex].text : e.value;
+        const c = document.createElement('canvas').getContext('2d'); c.font = cs.font;
+        const need = c.measureText(t || '').width + (e.tagName === 'SELECT' ? 26 : 10);
+        if (need > r.width + 1) out.push(`${root}: ${e.dataset.p || e.id} clipped (${Math.round(r.width)} < ${Math.round(need)})`);
+      }
+    }
+    return out;
+  }
+
+  // one real response: every mock below is derived from it, so mocks never drift from the API
+  const REAL = await (await fetch('/api/v1/verify', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ simulate: { family: 'manhattan', kind: 'bridge', seed: 0 } }) })).json();
+  const clone = () => JSON.parse(JSON.stringify(REAL));
+  function fileLike() {   // what a loaded file looks like: no truth, no agreement, file badge
+    const r = clone();
+    r.truth = null; r.provenance = 'LOADED FROM FILE'; r.source_type = 'file'; delete r.images.wafer;
+    r.agreement = { verifier: 'no ground truth', cnn: 'no ground truth', d2d_single: 'no ground truth', d2d_double: 'no ground truth' };
+    r.explanation.truth = ['No ground truth exists for this input, so no verdict is marked correct or wrong.'];
+    r.cnn.domain_note = 'trained on simulated Manhattan tiles; this input is outside its training domain';
+    r.d2d = { available: false, why: 'not available: no reference die' };
+    return r;
+  }
+  const okHandler = (body) => (url) => url.endsWith('/health') ? respond(PWIN, 200, HEALTH) : respond(PWIN, 200, body);
+  let PWIN = null; const HEALTH = await (await fetch('/api/v1/health')).json();
+
+  const tests = {
+    'static grid: labelled synthetic, no stale text, no JS errors': async () => {
+      const P = await load();
+      assert(P.q('#tab-grid').textContent.includes('synthetic'), 'grid tab not labelled synthetic');
+      const html = P.doc.documentElement.innerHTML;
+      for (const s of ['are not built yet', 'Module 3 not built', 'Module 4 only', 'untuned Module 4']) assert(!html.includes(s), 'stale text: ' + s);
+      assert(P.qa('#defect-tbody tr').length > 0, 'sample table empty');
+      assert(P.win.__errs.length === 0, 'JS errors: ' + P.win.__errs);
+      unload(P);
+    },
+    'mode switching shows and hides the live controls': async () => {
+      const P = await load();
+      for (const m of ['live', 'grid', 'patch', 'live', 'grid']) { P.q(`[data-mode="${m}"]`).click(); await sleep(20); }
+      assert(P.win.getComputedStyle(P.q('#live-controls')).display === 'none', 'live controls visible in grid mode');
+      P.q('[data-mode="live"]').click(); await sleep(20);
+      assert(P.win.getComputedStyle(P.q('#live-controls')).display !== 'none', 'live controls hidden in live mode');
+      assert(P.win.getComputedStyle(P.q('#explorer')).display === 'none', 'explorer visible in live mode');
+      assert(P.qa('#layer-list .layer-sep').length === 1, 'overlay section missing in live mode');
+      assert(P.win.__errs.length === 0, 'JS errors: ' + P.win.__errs);
+      unload(P);
+    },
+    'real run: three cards match the response, badge and truth shown': async () => {
+      const P = await load();
+      await runLive(P);
+      const cards = P.qa('#live-cards .vcard');
+      assert(cards.length === 3, `expected 3 cards, got ${cards.length}`);
+      assert(cards[0].querySelector('.vcard-verdict').textContent.includes(REAL.verifier.verdict), 'verifier card verdict differs from the API');
+      assert(cards[1].textContent.includes(REAL.cnn.prob.toFixed(3)), 'CNN probability missing');
+      assert(P.qa('#live-cards .agree-yes, #live-cards .agree-no').length >= 2, 'agreement marks missing with ground truth');
+      const badge = P.qa('#inspector-body .insp-field').find(e => e.textContent.includes('Badge'));
+      assert(badge && badge.textContent.includes(REAL.provenance), 'inspector badge missing');
+      const nSent = Object.values(REAL.explanation).flat().length;
+      assert(P.qa('#live-explain .xp-line').length === nSent, 'explanation sentence count differs from the API');
+      assert(P.win.__errs.length === 0, 'JS errors: ' + P.win.__errs);
+      unload(P);
+    },
+    'no ground truth: no correctness mark anywhere, file badge, D2D N/A': async () => {
+      const P = await load(); PWIN = P.win;
+      mock(P, okHandler(fileLike()));
+      await runLive(P);
+      const txt = P.q('#live-cards').textContent + P.q('#live-explain').textContent;
+      assert(!txt.includes('✓') && !txt.includes('✗'), 'correctness mark shown without ground truth');
+      assert(P.qa('#live-cards .agree-yes, #live-cards .agree-no').length === 0, 'agree classes without ground truth');
+      assert(txt.includes('no ground truth'), '"no ground truth" not stated');
+      assert(P.qa('#live-cards .vcard')[2].textContent.includes('N/A'), 'D2D card not N/A');
+      assert(P.q('#live-cards').textContent.includes('outside its training domain'), 'CNN domain note missing');
+      const badge = P.qa('#inspector-body .insp-field').find(e => e.textContent.includes('Badge'));
+      assert(badge.textContent.includes('LOADED FROM FILE'), 'file badge missing');
+      unload(P);
+    },
+    '422 error: banner shows code + message, field marked invalid, old result kept': async () => {
+      const P = await load(); PWIN = P.win;
+      await runLive(P);
+      mock(P, (url) => url.endsWith('/health') ? respond(P.win, 200, HEALTH) :
+        respond(P.win, 422, { error: { code: 'out_of_range', message: 'simulate.ler_sigma: too big', field: 'simulate.ler_sigma', request_id: 'abc' } }));
+      P.q('#live-run').click(); await waitIdle(P);
+      assert(P.q('#live-banner').textContent.includes('out_of_range'), 'error code not shown');
+      assert(P.q('[data-p="ler_sigma"]').classList.contains('invalid'), 'field not marked invalid');
+      assert(P.q('#live-banner').textContent.includes('previous result'), 'does not say the old result is shown');
+      assert(P.qa('#live-cards .vcard').length === 3, 'old cards removed');
+      unload(P);
+    },
+    '500 error: request id shown': async () => {
+      const P = await load();
+      mock(P, (url) => url.endsWith('/health') ? respond(P.win, 200, HEALTH) :
+        respond(P.win, 500, { error: { code: 'internal', message: 'internal error, request id r123', field: null, request_id: 'r123' } }));
+      await runLive(P);
+      assert(P.q('#live-banner').textContent.includes('r123'), 'request id not shown');
+      unload(P);
+    },
+    'server down: banner explains how to start it, API status offline': async () => {
+      const P = await load();
+      mock(P, async () => { throw new TypeError('Failed to fetch'); });
+      P.q('[data-mode="live"]').click(); await sleep(20);
+      P.win.dispatchEvent(new Event('focus'));
+      P.q('#live-run').click(); await waitIdle(P);
+      assert(P.q('#live-banner').textContent.includes('python -m nanovate.app'), 'no start instructions');
+      assert(P.q('#st-api').textContent.includes('offline'), 'API status not offline');
+      assert(!P.q('#live-run').disabled, 'Run stays disabled');
+      unload(P);
+    },
+    'client validation: blank / fractional seed is refused before any request': async () => {
+      const P = await load();
+      let calls = 0;
+      mock(P, (url) => { calls++; return respond(P.win, 200, url.endsWith('/health') ? HEALTH : REAL); });
+      P.q('[data-mode="live"]').click();
+      for (const bad of ['', '1.5', '-1']) {
+        calls = 0; P.q('[data-p="seed"]').value = bad; P.q('#live-run').click(); await sleep(80);
+        assert(calls === 0, `request sent for seed "${bad}"`);
+        assert(P.q('[data-p="seed"]').classList.contains('invalid'), `seed "${bad}" not marked invalid`);
+      }
+      unload(P);
+    },
+    'cancel: buttons reset and the banner says what happened': async () => {
+      const P = await load();
+      mock(P, (url, opts) => url.endsWith('/health') ? respond(P.win, 200, HEALTH) :
+        new Promise((_, rej) => opts.signal.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))));
+      P.q('[data-mode="live"]').click(); P.q('#live-run').click(); await sleep(80);
+      assert(P.q('#live-run').disabled && !P.q('#live-cancel').disabled, 'busy state wrong');
+      P.q('#live-cancel').click(); await waitIdle(P);
+      assert(!P.q('#live-run').disabled && P.q('#live-cancel').disabled, 'buttons not reset after cancel');
+      assert(P.q('#live-banner').textContent.includes('Cancelled'), 'cancel not reported');
+      unload(P);
+    },
+    'reason highlight toggles and explains the bottleneck has no location': async () => {
+      const P = await load(); PWIN = P.win;
+      mock(P, okHandler(clone()));
+      await runLive(P);
+      const row = P.q('#inspector-body [data-hl="sites"]');
+      row.click(); await sleep(20);
+      assert(P.q('#inspector-body [data-hl="sites"]').classList.contains('hl'), 'Δβ row not highlighted');
+      assert(P.qa('#live-explain .xp-line.hl').length >= 1, 'matching sentence not highlighted');
+      P.q('#inspector-body [data-hl="sites"]').click(); await sleep(20);
+      assert(P.qa('.hl').length === 0, 'highlight not cleared on second click');
+      P.q('#inspector-body [data-hl="none"]').click(); await sleep(20);
+      assert(P.q('#live-banner').textContent.includes('no single location'), 'bottleneck note missing');
+      unload(P);
+    },
+    'escaping: API text is never injected as HTML': async () => {
+      const P = await load();
+      const evil = '<img src=x onerror="window.__pwned=1">';
+      mock(P, (url) => url.endsWith('/health') ? respond(P.win, 200, HEALTH) :
+        respond(P.win, 422, { error: { code: 'x' + evil, message: evil, field: null, request_id: evil } }));
+      await runLive(P); await sleep(100);
+      assert(!P.win.__pwned && P.qa('#live-banner img').length === 0, 'API text injected as HTML');
+      const r = clone(); r.explanation.verifier = [evil]; r.warnings = [evil]; PWIN = P.win;
+      mock(P, okHandler(r)); P.q('#live-run').click(); await waitIdle(P); await sleep(100);
+      assert(!P.win.__pwned && P.qa('#live-explain img, #live-banner img').length === 0, 'explanation/warning injected as HTML');
+      unload(P);
+    },
+    'randomise fills valid explicit values': async () => {
+      const P = await load();
+      P.q('[data-mode="live"]').click();
+      for (let i = 0; i < 20; i++) {
+        P.q('#live-random').click();
+        const bad = P.qa('#live-form input[type="number"]').filter(e => !e.disabled && (e.value === '' || !e.checkValidity()));
+        assert(bad.length === 0, 'randomise produced invalid: ' + bad.map(e => e.dataset.p + '=' + e.value));
+        assert(!P.q('[data-p="shift_random"]').checked, 'randomise left the shift implicit');
+      }
+      unload(P);
+    },
+  };
+  for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]]) {
+    tests[`layout ${w}x${h}: no clipped controls or spilled text, Run visible, patch view usable`] = async () => {
+      const P = await load(w, h); PWIN = P.win;
+      mock(P, okHandler(clone()));
+      P.q('[data-p="kind"]').value = 'filament'; P.q('[data-p="family"]').value = 'manhattan';
+      await runLive(P);
+      const o = overflow(P, ['#live-controls', '#live-cards', '#live-explain', '#inspector-body', '#statusbar']);
+      assert(o.length === 0, o.slice(0, 6).join('; '));
+      assert(P.q('#statusbar').scrollHeight <= P.q('#statusbar').clientHeight + 1, 'status bar wraps');
+      const rb = P.q('#live-run').getBoundingClientRect(), pb = P.q('#live-controls').getBoundingClientRect();
+      assert(rb.height > 0 && rb.top >= pb.top && rb.bottom <= pb.bottom + 1, 'Run button not visible without scrolling');
+      assert(P.q('#live-canvas').height >= 200, `patch canvas only ${P.q('#live-canvas').height} px tall`);
+      assert(P.win.__errs.length === 0, 'JS errors: ' + P.win.__errs);
+      unload(P);
+    };
+  }
+
+  const tbody = document.getElementById('results');
+  for (const [name, fn] of Object.entries(tests)) {
+    let ok = true, msg = '';
+    try { await fn(); } catch (e) { ok = false; msg = e.message; }
+    results.push({ name, ok, msg });
+    tbody.insertAdjacentHTML('beforeend', `<tr><td class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS' : 'FAIL'}</td><td>${name.replace(/</g, '&lt;')}</td><td>${msg.replace(/</g, '&lt;')}</td></tr>`);
+  }
+  const failed = results.filter(r => !r.ok).length;
+  document.getElementById('summary').innerHTML = `<span class="${failed ? 'fail' : 'pass'}">${results.length - failed} passed, ${failed} failed</span>`;
+  window.__selftest = { done: true, passed: results.length - failed, failed, results };
+})().catch(e => { document.getElementById('summary').textContent = 'self-test crashed: ' + e.message; window.__selftest = { done: true, crashed: e.message }; });
+</script>
+</body>
+</html>

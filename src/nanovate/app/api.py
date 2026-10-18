@@ -32,7 +32,7 @@ log = logging.getLogger("nanovate.app")
 MAX_BODY = 20 * 1024 * 1024        # bytes, whole request
 SYNTHETIC_NOTE = ("Synthetic data: simulated inputs come from the Nanovate testbed. The app analyses one patch at a time; "
                   "it does not scan wafers or control any tool. Nothing here is validated on real SEM images.")
-RANGE_ERRORS = {"greater_than_equal", "less_than_equal", "greater_than", "less_than", "too_short", "too_long", "literal_error"}
+RANGE_ERRORS = {"greater_than_equal", "less_than_equal", "greater_than", "less_than", "too_short", "too_long", "literal_error", "finite_number"}
 
 
 def png(arr: np.ndarray, lo: float = 0.0, hi: float = 1.0) -> str:
@@ -101,6 +101,8 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
             log.exception("unhandled error, request_id=%s path=%s", request.state.request_id, request.url.path)
             return _err(500, "internal", f"internal error, request id {request.state.request_id} (see the server log)", request)
         response.headers["X-Request-ID"] = request.state.request_id
+        if not request.url.path.startswith("/api/"):   # frontend files: revalidate so an updated UI is never served stale
+            response.headers["Cache-Control"] = "no-cache"
         return response
 
     @app.exception_handler(InputError)

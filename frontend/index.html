@@ -256,6 +256,8 @@
     display: grid; grid-template-columns: 110px 1fr; gap: 4px; padding: 3px 8px; align-items: center;
   }
   .insp-field label { font-size: 11px; color: var(--text-dim); }
+  .insp-field > div { min-width: 0; }
+  .insp-field span.value { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
   .insp-field .value {
     font-family: var(--font-mono); font-size: 12px; color: var(--text);
     background: transparent; border: 1px solid transparent; padding: 2px 4px; width: 100%;
@@ -316,7 +318,11 @@
     display: flex; align-items: center; padding: 0 10px; gap: 16px; font-size: 11px; font-family: var(--font-mono);
     color: var(--text-dim);
   }
-  #statusbar .stat { display: flex; gap: 4px; }
+  #statusbar { overflow: hidden; white-space: nowrap; }
+  #statusbar .stat { display: flex; gap: 4px; min-width: 0; flex-shrink: 1; }
+  #statusbar .stat .label { flex-shrink: 0; }
+  #statusbar .stat .val { overflow: hidden; text-overflow: ellipsis; }
+  #statusbar .sim-badge { flex-shrink: 0; }
   #statusbar .stat .label { color: var(--text-dim); }
   #statusbar .stat .val { color: var(--text); }
   #statusbar .sim-badge {
@@ -429,14 +435,15 @@
   #live-controls { flex: 1; min-height: 120px; display: none; }
   #main.live #explorer { display: none; }
   #main.live #live-controls { display: flex; }
-  .live-form { padding: 4px 0; }
+  .live-form { padding: 2px 0; }
+  .live-form .insp-field { grid-template-columns: 1fr; gap: 1px; padding: 2px 8px; }
   .live-form .insp-field select.value, .live-form .insp-field input.value { width: 100%; }
   .live-form .insp-field .value.invalid { border-color: var(--danger); }
-  .live-form .shift-pair { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; align-items: center; }
+  .live-form .shift-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 4px; align-items: center; }
   .live-form .chk { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-  .live-actions { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .live-actions { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; background: var(--bg-panel); }
   .live-actions .btn:disabled { opacity: 0.4; pointer-events: none; }
-  #live-view { position: absolute; inset: 0; display: none; flex-direction: column; background: #0e0e10; }
+  #live-view { position: absolute; inset: 0; display: none; flex-direction: column; background: #0e0e10; overflow-y: auto; }
   #viewport-container.live #live-view { display: flex; }
   #viewport-container.live > #viewport-canvas { display: none; }
   #live-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -444,12 +451,12 @@
   .vcard { background: var(--bg-panel); padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .vcard-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); }
   .vcard-verdict { font-family: var(--font-mono); font-size: 14px; font-weight: 600; margin: 2px 0; }
-  .vcard-line { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vcard-line { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); overflow-wrap: anywhere; }
   .vcard-line.warn { color: var(--warn); }
   .agree-yes { color: var(--ok); }
   .agree-no { color: var(--danger); }
   .agree-none { color: var(--text-dim); }
-  #live-canvas-wrap { flex: 1; position: relative; min-height: 0; }
+  #live-canvas-wrap { flex: 1 0 280px; position: relative; min-height: 280px; }
   #live-canvas { display: block; width: 100%; height: 100%; }
   #live-explain { max-height: 104px; overflow: auto; border-bottom: 1px solid var(--border); background: var(--bg-deep); padding: 4px 10px 6px; flex-shrink: 0; }
   #live-explain:empty { display: none; }
@@ -545,12 +552,12 @@
           <div class="insp-field"><label>Seed</label><div><input class="value editable" data-p="seed" type="number" min="0" max="2147483647" step="1" value="0"></div></div>
           <div class="insp-field"><label>Split</label><div><select class="value editable" data-p="split" title="live: fresh layouts never used by any experiment; val/test: the exact experiment samples (train is refused: the CNN saw it)"><option value="live">live (new layouts)</option><option value="val">val split</option><option value="test">test split</option></select></div></div>
         </div>
-        <div class="live-actions">
-          <button class="btn primary" id="live-run">Run</button>
-          <button class="btn danger" id="live-cancel" disabled title="Stops waiting for this run. The server finishes the analysis and discards it.">Cancel</button>
-          <button class="btn" id="live-random" title="Fill the controls with random explicit values (the request stays reproducible from its seed)">Randomise</button>
-        </div>
-        <div class="metric-note" id="live-note" style="padding:0 8px 8px">One seed drives the simulated wafer, scribe patches and reference dies. The verifier config, CNN and die-to-die rules are frozen (fitted on Manhattan val).</div>
+        <div class="metric-note" id="live-note" style="padding:4px 8px 8px">One seed drives the simulated wafer, scribe patches and reference dies. The verifier config, CNN and die-to-die rules are frozen (fitted on Manhattan val).</div>
+      </div>
+      <div class="live-actions">
+        <button class="btn primary" id="live-run">Run</button>
+        <button class="btn danger" id="live-cancel" disabled title="Stops waiting for this run. The server finishes the analysis and discards it.">Cancel</button>
+        <button class="btn" id="live-random" title="Fill the controls with random explicit values (the request stays reproducible from its seed)">Randomise</button>
       </div>
     </div>
     <div class="panel" id="layer-stack">
@@ -917,8 +924,12 @@
   const lcanvas = $('#live-canvas'), lctx = lcanvas.getContext('2d');
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   // Provenance badge drawn on every image panel ('sim' = simulated, 'file' = loaded from file)
-  function drawBadge(g, x, y, text, kind) {
+  function drawBadge(g, x, y, text, kind, size) {
     g.save(); g.font = '600 10px monospace'; g.textAlign = 'left';
+    if (size) {   // keep the badge inside its panel: clip, and fall back to the source word when the panel is narrow
+      g.beginPath(); g.rect(x, y, size, size); g.clip();
+      if (g.measureText(text).width + 10 > size) text = text.split(' (')[0];
+    }
     const tw = g.measureText(text).width + 10;
     g.fillStyle = kind === 'file' ? cssVar('--warn') : cssVar('--danger');
     g.fillRect(x + 1, y + 1, tw, 15);
@@ -983,7 +994,7 @@
       if (im.complete && im.naturalWidth) ctx.drawImage(im, x, y, size, size);
       ctx.strokeStyle = '#3a3a40'; ctx.strokeRect(x, y, size, size);
       ctx.fillStyle = '#d0d0d4'; ctx.fillText(l.name, x, y - 5);
-      drawBadge(ctx, x, y, `SIMULATED (${RUN.split} split sample)`, 'sim');
+      drawBadge(ctx, x, y, `SIMULATED (${RUN.split} split sample)`, 'sim', size);
       if (['sem', 'field'].includes(l.id)) { // central window used for topology
         const m = RUN.margin / RUN.tile * size; ctx.strokeStyle = 'rgba(74,158,255,0.7)'; ctx.setLineDash([4, 3]);
         ctx.strokeRect(x + m, y + m, size - 2 * m, size - 2 * m); ctx.setLineDash([]);
@@ -1220,10 +1231,26 @@
     }
   }
 
+  function badNumbers() {
+    const bad = [];
+    $$('#live-form input[type="number"]').forEach(e => {
+      if (e.disabled) return;
+      const v = e.value.trim(), x = Number(v);
+      if (v === '' || !Number.isFinite(x) || !e.checkValidity() || (e.step === '1' && !Number.isInteger(x))) bad.push(e);
+    });
+    return bad;
+  }
   async function runLive() {
     if (live.busy) return;
+    clearInvalid();
+    const bad = badNumbers();
+    if (bad.length) {
+      bad.forEach(e => e.classList.add('invalid'));
+      setBanner('error', bad.map(e => `<strong>${esc(e.dataset.p)}</strong>: enter a number in [${esc(e.min)}, ${esc(e.max)}]` + (e.step === '1' ? ' (whole number)' : '')).join('<br>'));
+      return;
+    }
     const p = readParams();
-    clearInvalid(); setBusy(true);
+    setBusy(true);
     live.ctrl = new AbortController();
     if (live.online === null || live.online === false) await checkHealth();
     if (!live.online) { setBanner('error', SERVER_DOWN); setBusy(false); return; }
@@ -1415,7 +1442,7 @@
         const m = r.overlays.window[0] / 256 * size; g.strokeStyle = 'rgba(74,158,255,0.7)'; g.setLineDash([4, 3]);
         g.strokeRect(x + m, y + m, size - 2 * m, size - 2 * m); g.setLineDash([]);
       }
-      drawBadge(g, x, y, r.provenance, kind);
+      drawBadge(g, x, y, r.provenance, kind, size);
     });
     g.fillStyle = '#d0d0d4';
     g.fillText(`${r.input_id} · seed ${r.seed} · ${r.params.family} · ${r.params.kind} · dose ${r.params.dose} e⁻/px · dashed box = comparison window`, 20, 18);

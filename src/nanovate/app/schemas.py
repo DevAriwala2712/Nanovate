@@ -11,7 +11,7 @@ API_VERSION = "v1"
 class SimulateParams(BaseModel):
     """SimulatedSource parameters. ``shift`` null = drawn from the acquisition stream, as in the experiments."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)   # no "50" -> 50, true -> 1, NaN, inf
     family: str = "manhattan"
     kind: str = "bridge"
     dose: float = Field(50.0, description="e-/px; one of the Exp-2 doses")
@@ -26,7 +26,7 @@ class SimulateParams(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
     input_id: Optional[str] = Field(None, max_length=64)
     simulate: Optional[SimulateParams] = None
     include_arrays: bool = Field(False, description="also return float32 arrays (base64), for tests and reports")

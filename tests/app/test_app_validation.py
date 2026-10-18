@@ -93,3 +93,39 @@ def test_missing_calibration_is_refused(engine):
 def test_tool_source_is_a_stub():
     with pytest.raises(NotImplementedError):
         ToolSource().load()
+
+
+@pytest.mark.parametrize("body,status,code", [
+    (b'{"simulate":{"shift":[NaN,0]}}', 422, "out_of_range"),        # used to crash the simulator (500)
+    (b'{"simulate":{"shift":[Infinity,0]}}', 422, "out_of_range"),
+    (b'{"simulate":{"ler_sigma":NaN}}', 422, "out_of_range"),
+    (b'{"simulate":{"seed":true}}', 400, "bad_request"),              # used to be accepted as seed 1
+    (b'{"simulate":{"dose":"50"}}', 400, "bad_request"),              # no string -> number coercion
+    (b"[" * 200000, 400, "bad_request"),                               # deep nesting: no RecursionError / 500
+    (b'{"simulate":' * 5000 + b"{}" + b"}" * 5000, 400, "bad_request"),
+])
+def test_hostile_json_bodies(client, body, status, code):
+    _check(client, client.post("/api/v1/verify", content=body, headers={"content-type": "application/json"}), status, code)
+
+
+@pytest.mark.parametrize("kw", [dict(ler_sigma=float("nan")), dict(grain=float("inf")), dict(warp=-0.1), dict(shift=(float("nan"), 0.0)),
+                                dict(seed=-1), dict(die=900)])
+def test_simulated_source_rejects_non_finite_and_out_of_range(kw):
+    from nanovate.app.sources import SimulatedSource
+    with pytest.raises(InputError) as e:
+        SimulatedSource(**kw).check()
+    assert e.value.code == "out_of_range"
+
+
+def test_integer_numbers_are_still_accepted(client):
+    r = client.post("/api/v1/simulate", json={"kind": "nuisance", "dose": 50, "shift": [1, -2], "warp": 0})
+    assert r.status_code == 200 and r.json()["truth"]["applied_shift"] == [1.0, -2.0]
+
+
+def test_frontend_files_are_revalidated(engine):
+    from fastapi.testclient import TestClient
+    from nanovate.app.api import create_app
+    c = TestClient(create_app(engine, frontend="frontend"))
+    assert c.get("/").headers["cache-control"] == "no-cache"
+    assert c.get("/selftest.html").status_code == 200
+    assert "cache-control" not in c.get("/api/v1/health").headers

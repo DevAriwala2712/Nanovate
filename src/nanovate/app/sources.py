@@ -12,6 +12,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import math
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -168,11 +169,12 @@ class SimulatedSource:
             raise InputError("out_of_range", f"kind must be one of {KINDS}", "kind")
         if float(self.dose) not in DOSE_GRID:
             raise InputError("out_of_range", f"dose must be one of {DOSE_GRID} e-/px (die-to-die rules exist only there)", "dose")
+        # 'not (lo <= v <= hi)' so NaN fails too (every comparison with NaN is False)
         for name, v, lo, hi in (("ler_sigma", self.ler_sigma, 0.5, 2.5), ("grain", self.grain, 0.0, 0.30), ("warp", self.warp, 0.0, 1.0),
                                 ("seed", self.seed, 0, 2**31 - 1), ("layout_id", self.layout_id, 0, 999), ("die", self.die, 0, REF_DIES[0] - 1)):
-            if not lo <= v <= hi:
+            if not (lo <= v <= hi):
                 raise InputError("out_of_range", f"{name} must be in [{lo}, {hi}], got {v}", name)
-        if self.shift is not None and (len(self.shift) != 2 or max(abs(float(v)) for v in self.shift) > MAX_SHIFT):
+        if self.shift is not None and (len(self.shift) != 2 or not all(math.isfinite(float(v)) and abs(float(v)) <= MAX_SHIFT for v in self.shift)):
             raise InputError("out_of_range", f"shift must be two values within +-{MAX_SHIFT:g} px (the Exp-4 range)", "shift")
 
     def load(self) -> InspectionInput:
