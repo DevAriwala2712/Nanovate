@@ -421,6 +421,38 @@
   .confusion th { color: var(--text-dim); font-weight: 500; }
   .metric-note { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); line-height: 1.5; }
   .banner { padding: 6px 10px; font-size: 11px; color: var(--warn); border-bottom: 1px solid var(--border); background: var(--bg-deep); }
+  .banner.error { color: var(--danger); }
+  .banner.info { color: var(--text-dim); }
+  .banner code { font-family: var(--font-mono); color: var(--text-bright); user-select: text; }
+
+  /* Live mode (served by python -m nanovate.app) */
+  #live-controls { flex: 1; min-height: 120px; display: none; }
+  #main.live #explorer { display: none; }
+  #main.live #live-controls { display: flex; }
+  .live-form { padding: 4px 0; }
+  .live-form .insp-field select.value, .live-form .insp-field input.value { width: 100%; }
+  .live-form .insp-field .value.invalid { border-color: var(--danger); }
+  .live-form .shift-pair { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; align-items: center; }
+  .live-form .chk { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .live-actions { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .live-actions .btn:disabled { opacity: 0.4; pointer-events: none; }
+  #live-view { position: absolute; inset: 0; display: none; flex-direction: column; background: #0e0e10; }
+  #viewport-container.live #live-view { display: flex; }
+  #viewport-container.live > #viewport-canvas { display: none; }
+  #live-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #live-cards:empty { display: none; }
+  .vcard { background: var(--bg-panel); padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .vcard-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); }
+  .vcard-verdict { font-family: var(--font-mono); font-size: 14px; font-weight: 600; margin: 2px 0; }
+  .vcard-line { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vcard-line.warn { color: var(--warn); }
+  .agree-yes { color: var(--ok); }
+  .agree-no { color: var(--danger); }
+  .agree-none { color: var(--text-dim); }
+  #live-canvas-wrap { flex: 1; position: relative; min-height: 0; }
+  #live-canvas { display: block; width: 100%; height: 100%; }
+  .spinner { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--border-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -489,6 +521,29 @@
       <div class="panel-header"><span class="panel-title">Run Explorer</span></div>
       <div class="panel-body" id="explorer-tree"></div>
     </div>
+    <div class="panel" id="live-controls">
+      <div class="panel-header"><span class="panel-title">Live Inspection</span></div>
+      <div class="panel-body">
+        <div class="live-form" id="live-form">
+          <div class="insp-field"><label>Source</label><div><span class="value readonly">Simulated (testbed)</span></div></div>
+          <div class="insp-field"><label>Family</label><div><select class="value editable" data-p="family"><option>manhattan</option><option>curvy</option><option>via</option></select></div></div>
+          <div class="insp-field"><label>Defect kind</label><div><select class="value editable" data-p="kind"><option>nuisance</option><option selected>bridge</option><option>open</option><option>particle</option><option>notch</option><option>filament</option></select></div></div>
+          <div class="insp-field"><label>Dose <span class="unit">e⁻/px</span></label><div><select class="value editable" data-p="dose"><option>5</option><option>10</option><option>20</option><option>35</option><option selected>50</option><option>100</option><option>200</option></select></div></div>
+          <div class="insp-field"><label>LER σ <span class="unit">nm</span></label><div><input class="value editable" data-p="ler_sigma" type="number" min="0.5" max="2.5" step="0.1" value="1.0"></div></div>
+          <div class="insp-field"><label>Grain <span class="unit">0–0.3</span></label><div><input class="value editable" data-p="grain" type="number" min="0" max="0.3" step="0.05" value="0.15"></div></div>
+          <div class="insp-field"><label>Shift dy, dx <span class="unit">px</span></label><div class="shift-pair"><input class="value editable" data-p="shift_y" type="number" min="-8" max="8" step="0.1" value="0" disabled><input class="value editable" data-p="shift_x" type="number" min="-8" max="8" step="0.1" value="0" disabled><label class="chk" title="Draw the shift from the seeded acquisition stream, as the experiments do"><input type="checkbox" data-p="shift_random" checked> rand</label></div></div>
+          <div class="insp-field"><label>Warp <span class="unit">px</span></label><div><input class="value editable" data-p="warp" type="number" min="0" max="1" step="0.1" value="0"></div></div>
+          <div class="insp-field"><label>Seed</label><div><input class="value editable" data-p="seed" type="number" min="0" max="2147483647" step="1" value="0"></div></div>
+          <div class="insp-field"><label>Split</label><div><select class="value editable" data-p="split" title="live: fresh layouts never used by any experiment; val/test: the exact experiment samples (train is refused: the CNN saw it)"><option value="live">live (new layouts)</option><option value="val">val split</option><option value="test">test split</option></select></div></div>
+        </div>
+        <div class="live-actions">
+          <button class="btn primary" id="live-run">Run</button>
+          <button class="btn danger" id="live-cancel" disabled title="Stops waiting for this run. The server finishes the analysis and discards it.">Cancel</button>
+          <button class="btn" id="live-random" title="Fill the controls with random explicit values (the request stays reproducible from its seed)">Randomise</button>
+        </div>
+        <div class="metric-note" id="live-note" style="padding:0 8px 8px">One seed drives the simulated wafer, scribe patches and reference dies. The verifier config, CNN and die-to-die rules are frozen (fitted on Manhattan val).</div>
+      </div>
+    </div>
     <div class="panel" id="layer-stack">
       <div class="panel-header"><span class="panel-title">Patch Layers</span></div>
       <div class="panel-body" id="layer-list"></div>
@@ -498,12 +553,18 @@
   <div class="panel" id="viewport-panel">
     <div class="panel-header">
       <div class="panel-tabs">
-        <div class="panel-tab active" data-mode="grid">Sample Grid</div>
+        <div class="panel-tab active" data-mode="grid" id="tab-grid">Sample Grid · validation split, synthetic</div>
         <div class="panel-tab" data-mode="patch">Patch Compare</div>
+        <div class="panel-tab" data-mode="live">Live</div>
       </div>
     </div>
     <div class="panel-body" id="viewport-container">
       <canvas id="viewport-canvas"></canvas>
+      <div id="live-view">
+        <div id="live-banner"></div>
+        <div id="live-cards"></div>
+        <div id="live-canvas-wrap"><canvas id="live-canvas"></canvas></div>
+      </div>
       <div class="vp-overlay" id="vp-coords"></div>
       <div class="vp-overlay" id="vp-zoom">100%</div>
       <div class="vp-overlay" id="vp-mode">Sample Grid</div>
@@ -558,7 +619,7 @@
         </table>
       </div>
       <div class="panel-body" id="pipeline-body" style="display:none; overflow:auto">
-        <div class="banner">Static export — measured on this machine when the data was generated. Module 1 (calibration), Module 2 (low-rank) and Module 3 (alignment, SDF energy) are not built yet and do not appear here.</div>
+        <div class="banner">Static export of the validation split (synthetic), timed on this machine when it was generated. Every patch ran Module 1 calibration (3 scribe patches), Module 3 alignment + SDF energy and Module 4 topology with the frozen v2 config. Module 2 (low-rank stack) is off in that config (use_stack = false), so every patch took the singleton path.</div>
         <div id="pipe-stages"></div>
       </div>
       <div class="panel-body" id="log-body-wrap" style="display:none; flex-direction:column; overflow:hidden">
@@ -581,6 +642,7 @@
   <div class="stat"><span class="label">Module 4</span> <span class="val" id="st-m4">—</span></div>
   <div class="stat"><span class="label">Samples</span> <span class="val" id="st-n">—</span></div>
   <div class="stat"><span class="label">Zoom</span> <span class="val" id="st-zoom">100%</span></div>
+  <div class="stat"><span class="label">API</span> <span class="val pipe-state idle" id="st-api">checking…</span></div>
   <div class="sim-badge">SYNTHETIC DATA</div>
 </div>
 
@@ -589,7 +651,8 @@
     <div class="modal-header">Regenerate Data <button class="modal-close" data-close="modal-newrun">✕</button></div>
     <div class="modal-body" style="font-size:12px; line-height:1.6">
       This page shows a static export. Run the pipeline from the repo root, then reload:
-      <pre style="margin-top:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-bright); user-select:text; white-space:pre-wrap">python scripts/export_ui.py --seed 0 --split val --per-cell 2 --tau 0.45 --field calibrated --pre-smooth 0.0</pre>
+      <pre style="margin-top:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-bright); user-select:text; white-space:pre-wrap">python scripts/export_ui.py --seed 0 --split val --per-cell 2 --dose 50</pre>
+      <div style="color:var(--text-dim); margin-top:8px">For live analysis of single patches, start <code>python -m nanovate.app</code> and use the Live tab.</div>
       <div style="color:var(--text-dim); margin-top:8px">Settings of the current export are in the status bar and About dialog.</div>
     </div>
     <div class="modal-footer"><button class="btn primary" data-close="modal-newrun">OK</button></div>
@@ -613,7 +676,7 @@
     <div class="modal-header">About Nanovate Review <button class="modal-close" data-close="modal-about">✕</button></div>
     <div class="modal-body" style="font-size:12px; line-height:1.6">
       <p><strong>Nanovate Review</strong> — viewer for the training-free SEM topology verifier.</p>
-      <p style="color:var(--text-dim); margin-top:8px">All patches are synthetic testbed samples; ground-truth labels come from exact topology of the wafer W vs CAD. Verdicts are produced by Module 4 as currently implemented (untuned unless the settings below say otherwise).</p>
+      <p style="color:var(--text-dim); margin-top:8px">All patches are synthetic testbed samples; ground-truth labels come from exact topology of the wafer W vs CAD. Verdicts come from the full verifier (Modules 1, 3, 4) with the config frozen on Manhattan val (results/v2/calib/decisions.json). Nanovate analyses one patch at a time; it does not scan wafers or control any tool.</p>
       <pre id="about-cfg" style="margin-top:8px; font-family:var(--font-mono); font-size:11px; user-select:text; white-space:pre-wrap"></pre>
     </div>
     <div class="modal-footer"><button class="btn primary" data-close="modal-about">OK</button></div>
@@ -767,6 +830,7 @@
   // ── Inspector ──
   function renderInspector() {
     const body = $('#inspector-body');
+    if (state.mode === 'live') return renderLiveInspector(body);
     if (!state.sel.size) { body.innerHTML = '<div style="padding:16px;color:var(--text-dim);font-size:12px">No selection</div>'; return; }
     const d = byId([...state.sel][0]);
     const ro = (v) => `<span class="value readonly">${esc(v)}</span>`;
@@ -781,7 +845,7 @@
         ${f('Verdict', `<span class="value verdict-${vclass(d.verdict)}">${GLYPH[vclass(d.verdict)]} ${d.verdict}</span>`)}
         ${f('Δβ (β₀, β₁)', ro(`(${d.dBeta})`))}${f('β ref', ro(`(${d.betaRef})`))}${f('β image', ro(`(${d.betaImg})`))}
         ${f('Bottleneck H0', ro(d.bottleneckH0.toFixed(4)))}${f('Bottleneck H1', ro(d.bottleneckH1.toFixed(4)))}
-        ${f('SDF energy', ro(d.sdfEnergy === null ? 'n/a (Module 3 not built)' : d.sdfEnergy))}
+        ${f('SDF energy', ro(d.sdfEnergy === null ? 'n/a' : d.sdfEnergy))}
         ${f('Matches truth', ro(d.correct ? 'yes' : 'NO'))}${f('Singleton', ro(d.singleton ? 'yes (no stack)' : 'no'))}</div></div>
       <div class="insp-section"><div class="insp-section-header"><span class="chev">▼</span> Acquisition</div><div class="insp-fields">
         ${f('Dose', ro(d.dose), 'e⁻/px')}${f('Shift', ro(`${d.shift[0].toFixed(2)}, ${d.shift[1].toFixed(2)}`), 'px (row, col)')}
@@ -825,23 +889,38 @@
     const f = mean(S.map(d => d.fieldMs)), t = mean(S.map(d => d.latencyMs));
     const row = (n, ms, note) => `<div class="pipe-stage" style="grid-template-columns:240px 110px 1fr"><span class="stage-name">${n}</span><span class="dur">${ms.toFixed(1)} ms</span><span class="counts">${note}</span></div>`;
     $('#pipe-stages').innerHTML =
-      row('Field build (Module 4 input)', f, `option: ${RUN.module4.field}; levels: ${RUN.module4.levelsSource}`) +
-      row('Persistence + bottleneck + verdict', t - f, `τ = ${RUN.module4.tau}; d*, e* unset → near-miss rule off`) +
+      row('Module 3: alignment + SDF energy', t - f, `levels: ${RUN.module4.levelsSource}; ${RUN.module4.sdfEnergy}`) +
+      row('Module 4: field + persistence + verdict', f, `field ${RUN.module4.field}; τ = ${RUN.module4.tau}; ` + (RUN.module4.dStar == null ? 'd*, e* unset → near-miss rule off' : `near-miss rule on (d* ${(+RUN.module4.dStar).toFixed(3)}, e* ${(+RUN.module4.eStar).toFixed(2)})`)) +
       row('Total per patch (mean)', t, `n = ${S.length}`);
   }
 
   // ── Viewport ──
   const canvas = $('#viewport-canvas'), ctx = canvas.getContext('2d');
   const CELL = 44, imgCache = {};
+  const lcanvas = $('#live-canvas'), lctx = lcanvas.getContext('2d');
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  // Provenance badge drawn on every image panel ('sim' = simulated, 'file' = loaded from file)
+  function drawBadge(g, x, y, text, kind) {
+    g.save(); g.font = '600 10px monospace'; g.textAlign = 'left';
+    const tw = g.measureText(text).width + 10;
+    g.fillStyle = kind === 'file' ? cssVar('--warn') : cssVar('--danger');
+    g.fillRect(x + 1, y + 1, tw, 15);
+    g.fillStyle = '#fff'; g.fillText(text, x + 6, y + 12); g.restore();
+  }
   function getImg(d, key) {
     const k = d.id + key;
     if (!imgCache[k]) { const im = new Image(); im.onload = draw; im.src = d.img[key]; imgCache[k] = im; }
     return imgCache[k];
   }
-  function resize() { const c = $('#viewport-container'); canvas.width = c.clientWidth; canvas.height = c.clientHeight; draw(); }
+  function resize() {
+    const c = $('#viewport-container'); canvas.width = c.clientWidth; canvas.height = c.clientHeight;
+    const lw = $('#live-canvas-wrap'); lcanvas.width = lw.clientWidth; lcanvas.height = lw.clientHeight;
+    draw();
+  }
   const toScreen = (gx, gy) => ({ x: canvas.width / 2 + state.panX + (gx - 5.5) * CELL * state.zoom, y: canvas.height / 2 + state.panY + (gy - 1) * CELL * 1.6 * state.zoom });
 
   function draw() {
+    if (state.mode === 'live') return drawLive();
     const w = canvas.width, h = canvas.height;
     ctx.fillStyle = '#0e0e10'; ctx.fillRect(0, 0, w, h);
     $('#vp-zoom').textContent = Math.round(state.zoom * 100) + '%';
@@ -887,6 +966,7 @@
       if (im.complete && im.naturalWidth) ctx.drawImage(im, x, y, size, size);
       ctx.strokeStyle = '#3a3a40'; ctx.strokeRect(x, y, size, size);
       ctx.fillStyle = '#d0d0d4'; ctx.fillText(l.name, x, y - 5);
+      drawBadge(ctx, x, y, `SIMULATED (${RUN.split} split sample)`, 'sim');
       if (['sem', 'field'].includes(l.id)) { // central window used for topology
         const m = RUN.margin / RUN.tile * size; ctx.strokeStyle = 'rgba(74,158,255,0.7)'; ctx.setLineDash([4, 3]);
         ctx.strokeRect(x + m, y + m, size - 2 * m, size - 2 * m); ctx.setLineDash([]);
@@ -899,9 +979,14 @@
   function setMode(m) {
     state.mode = m;
     $$('[data-mode]').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
-    $('#vp-mode').textContent = m === 'grid' ? 'Sample Grid' : 'Patch Compare';
+    const isLive = m === 'live';
+    $('#main').classList.toggle('live', isLive);
+    $('#viewport-container').classList.toggle('live', isLive);
+    $$('#viewport-container > .vp-overlay').forEach(o => o.style.display = isLive ? 'none' : '');
+    $('#vp-mode').textContent = m === 'grid' ? `Sample Grid · ${RUN.split} split, synthetic` : 'Patch Compare';
     $('#vp-legend').style.display = m === 'grid' ? '' : 'none';
-    state.zoom = 1; state.panX = 0; state.panY = 0; draw();
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+    renderInspector(); renderStatus(); resize();
   }
   $$('[data-mode]').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
 
@@ -1039,6 +1124,209 @@
     else if (e.key === 'Escape') { $('#find-overlay').classList.remove('open'); $$('.modal-overlay').forEach(m => m.classList.remove('open')); $('#ctx-menu').classList.remove('open'); }
   });
 
+  // ── Live mode: talks to python -m nanovate.app (/api/v1); every number shown comes from the response ──
+  const API = '/api/v1';
+  const live = { res: null, busy: false, ctrl: null, health: null, online: null, imgs: {}, lastError: null };
+  const SERVER_DOWN = location.protocol === 'file:'
+    ? 'Opened from a file: Live mode needs the app server. Start it from the repository root with <code>python -m nanovate.app</code> and open <code>http://127.0.0.1:8765/</code>. The static grid still works here.'
+    : `Server not reachable at ${esc(location.origin)}. The static grid still works. Start it from the repository root with <code>python -m nanovate.app</code>, then press Run again.`;
+
+  async function api(path, opts = {}) {
+    let r;
+    try { r = await fetch(API + path, { headers: { 'content-type': 'application/json' }, ...opts }); }
+    catch (e) { if (e.name === 'AbortError') throw e; const x = new Error('network'); x.network = true; throw x; }
+    let j = null; try { j = await r.json(); } catch (_) { /* non-JSON body */ }
+    if (!r.ok) { const x = new Error(j?.error?.message || `HTTP ${r.status}`); x.api = j?.error || { code: `http_${r.status}`, message: `HTTP ${r.status}` }; throw x; }
+    return j;
+  }
+  function setApi(online) {
+    live.online = online;
+    const el = $('#st-api');
+    el.className = 'val pipe-state ' + (online ? 'complete' : 'error');
+    el.textContent = online ? `online · config ${live.health.config_hash} · ${live.health.commit.slice(0, 7)}` : 'offline';
+  }
+  async function checkHealth() {
+    if (location.protocol === 'file:') { setApi(false); return false; }
+    try { live.health = await api('/health'); setApi(true); return true; }
+    catch (e) { setApi(false); return false; }
+  }
+  function setBanner(kind, html) { $('#live-banner').innerHTML = html ? `<div class="banner ${kind}">${html}</div>` : ''; }
+
+  function readParams() {
+    const v = (k) => $(`#live-form [data-p="${k}"]`);
+    const p = { family: v('family').value, kind: v('kind').value, dose: +v('dose').value, ler_sigma: +v('ler_sigma').value,
+      grain: +v('grain').value, warp: +v('warp').value, seed: Math.trunc(+v('seed').value), split: v('split').value,
+      shift: v('shift_random').checked ? null : [+v('shift_y').value, +v('shift_x').value] };
+    return p;
+  }
+  function clearInvalid() { $$('#live-form .value').forEach(e => e.classList.remove('invalid')); }
+  function markInvalid(field) {
+    if (!field) return;
+    const k = field.split('.').pop();
+    const els = k === 'shift' ? [$('#live-form [data-p="shift_y"]'), $('#live-form [data-p="shift_x"]')] : [$(`#live-form [data-p="${k}"]`)];
+    els.forEach(e => e && e.classList.add('invalid'));
+  }
+  function setBusy(b) {
+    live.busy = b;
+    $('#live-run').disabled = b; $('#live-random').disabled = b; $('#live-cancel').disabled = !b;
+  }
+
+  function loadImgs(res) {
+    const src = { sem: res.images.sem.png, cad: res.images.cad.png, field: res.overlays.field.png };
+    if (res.images.wafer) src.wafer = res.images.wafer.png;
+    live.imgs = {};
+    for (const [k, u] of Object.entries(src)) { const im = new Image(); im.onload = () => draw(); im.src = u; live.imgs[k] = im; }
+  }
+
+  async function runLive() {
+    if (live.busy) return;
+    const p = readParams();
+    clearInvalid(); setBusy(true);
+    live.ctrl = new AbortController();
+    if (live.online === null || live.online === false) await checkHealth();
+    if (!live.online) { setBanner('error', SERVER_DOWN); setBusy(false); return; }
+    const slowFit = live.health && !live.health.d2d_rules_cached.includes(p.dose);
+    setBanner('info', `<span class="spinner"></span>Running the verifier, the CNN and die-to-die on seed ${p.seed}…` +
+      (slowFit ? ` The first run at dose ${p.dose} e⁻/px fits the die-to-die rule on Manhattan val, exactly as the experiments do (one time, about 20 s).` : ''));
+    const t0 = performance.now();
+    try {
+      const res = await api('/verify', { method: 'POST', body: JSON.stringify({ simulate: p }), signal: live.ctrl.signal });
+      live.res = res; live.lastError = null; loadImgs(res);
+      setBanner('', res.warnings.length ? res.warnings.map(esc).join('<br>') : '');
+      if (slowFit) checkHealth();
+      const d = res.d2d.available ? (res.d2d.single.flagged ? 'flagged' : 'not flagged') : 'n/a';
+      log('INFO', 'Live', `${res.input_id} seed ${res.seed}: verifier ${res.verifier.verdict}, CNN p=${res.cnn.prob.toFixed(3)}, D2D single ${d}; truth ${res.truth ? res.truth.label : 'none'} (${(performance.now() - t0).toFixed(0)} ms round trip)`);
+    } catch (e) {
+      if (e.name === 'AbortError') { setBanner('info', 'Cancelled. The server finishes that analysis in the background and discards it; the next run waits for it.'); log('WARN', 'Live', 'Run cancelled by the user'); }
+      else if (e.network) { setApi(false); setBanner('error', SERVER_DOWN); log('ERROR', 'Live', 'Server not reachable'); }
+      else { live.lastError = e.api; markInvalid(e.api.field); setBanner('error', `<strong>${esc(e.api.code)}</strong>: ${esc(e.api.message)}` + (e.api.request_id ? ` <span style="color:var(--text-dim)">(request ${esc(e.api.request_id)})</span>` : '') + (live.res ? ' <span style="color:var(--text-dim)">The previous result is still shown below.</span>' : '')); log('ERROR', 'Live', `${e.api.code}: ${e.api.message}`); }
+    } finally { live.ctrl = null; setBusy(false); renderCards(); renderInspector(); renderStatus(); draw(); }
+  }
+  $('#live-run').addEventListener('click', runLive);
+  $('#live-cancel').addEventListener('click', () => live.ctrl && live.ctrl.abort());
+  $('#live-form [data-p="shift_random"]').addEventListener('change', (e) => {
+    ['shift_y', 'shift_x'].forEach(k => $(`#live-form [data-p="${k}"]`).disabled = e.target.checked);
+  });
+  $('#live-form').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runLive(); } });
+  $('#live-random').addEventListener('click', () => {
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const set = (k, v) => { $(`#live-form [data-p="${k}"]`).value = v; };
+    set('family', pick(FAMILIES)); set('kind', pick(KIND_ORDER)); set('dose', pick([5, 10, 20, 35, 50, 100, 200]));
+    set('ler_sigma', pick([0.5, 1.0, 1.5, 2.0, 2.5])); set('grain', pick([0, 0.1, 0.15, 0.2, 0.3]));
+    set('seed', Math.floor(Math.random() * 100000)); set('warp', 0);
+    const r = $('#live-form [data-p="shift_random"]'); r.checked = false; r.dispatchEvent(new Event('change'));
+    set('shift_y', (Math.random() * 16 - 8).toFixed(1)); set('shift_x', (Math.random() * 16 - 8).toFixed(1));
+    clearInvalid(); log('INFO', 'Live', 'Controls randomised (explicit values; press Run)');
+  });
+
+  const AGREE = {
+    agrees: ['agree-yes', '✓ agrees with ground truth'], disagrees: ['agree-no', '✗ disagrees with ground truth'],
+    'no ground truth': ['agree-none', 'no ground truth: no correctness mark'], 'not available': ['agree-none', 'not available'],
+  };
+  const agreeLine = (a) => `<div class="vcard-line ${AGREE[a][0]}">${AGREE[a][1]}</div>`;
+  const fmt = (x, n = 3) => (x === null || x === undefined) ? 'n/a' : (+x).toFixed(n);
+
+  function renderCards() {
+    const el = $('#live-cards'), r = live.res;
+    if (!r) { el.innerHTML = ''; return; }
+    const truth = r.truth ? `truth: ${esc(r.truth.label)} (${esc(r.truth.kind)}, Δβ (${r.truth.d_beta}))` : 'truth: none (no ground truth for this input)';
+    const v = r.verifier, rs = v.reason, vc = vclass(v.verdict);
+    const nmRule = `bottleneck ${fmt(rs.bottleneck_max)} · SDF ${fmt(rs.max_sdf_energy, 2)} · peak-z ${fmt(rs.peak_z, 1)}`;
+    const cnn = r.cnn, cc = cnn.flagged ? 'killer' : 'nuisance';
+    let d2dHtml;
+    if (!r.d2d.available) {
+      d2dHtml = `<div class="vcard-verdict verdict-nuisance">N/A</div><div class="vcard-line warn">${esc(r.d2d.why)}</div><div class="vcard-line">${truth}</div>${agreeLine('not available')}`;
+    } else {
+      const s1 = r.d2d.single, s2 = r.d2d.double;
+      const dbl = s2.available === false ? esc(s2.why) : `double: ${s2.flagged ? 'FLAGGED' : 'not flagged'} (area ${s2.max_area} px, min ${s2.rule.min_area})`;
+      d2dHtml = `<div class="vcard-verdict verdict-${s1.flagged ? 'killer' : 'nuisance'}">${s1.flagged ? '● FLAGGED' : '■ NOT FLAGGED'}</div>
+        <div class="vcard-line" title="largest connected region above θ = ${s1.rule.theta} (σ ${s1.rule.sigma} px)">single: area ${s1.max_area} px vs min ${s1.rule.min_area} px</div>
+        <div class="vcard-line">${dbl}</div><div class="vcard-line">${truth}</div>${agreeLine(r.agreement.d2d_single)}
+        <div class="vcard-line">${fmt(s1.ms, 0)} ms · no reason (a difference map)</div>`;
+    }
+    el.innerHTML = `
+      <div class="vcard"><div class="vcard-title">Verifier (topology, no labels)</div>
+        <div class="vcard-verdict verdict-${vc}">${GLYPH[vc]} ${esc(v.verdict)}</div>
+        <div class="vcard-line">Δβ (β₀, β₁) = (${rs.delta_betti}) · ${rs.singleton ? 'singleton' : 'stack'}</div>
+        <div class="vcard-line" title="near-miss needs all three: d* ${fmt(rs.d_star)}, e* ${fmt(rs.e_star, 2)}, z* ${fmt(rs.z_star, 1)}">${nmRule}</div>
+        <div class="vcard-line">${truth}</div>${agreeLine(r.agreement.verifier)}
+        <div class="vcard-line">${fmt(r.runtime.timings_ms.verifier_total, 0)} ms</div></div>
+      <div class="vcard"><div class="vcard-title">CNN (Manhattan-trained)</div>
+        <div class="vcard-verdict verdict-${cc}">${cnn.flagged ? '● KILLER' : '■ NOT KILLER'}</div>
+        <div class="vcard-line">p = ${fmt(cnn.prob)} ${cnn.flagged ? '≥' : '<'} threshold ${fmt(cnn.threshold)}</div>
+        ${cnn.domain_note ? `<div class="vcard-line warn" title="${esc(cnn.domain_note)}">${esc(cnn.domain_note)}</div>` : '<div class="vcard-line">no near-miss bin</div>'}
+        <div class="vcard-line">${truth}</div>${agreeLine(r.agreement.cnn)}
+        <div class="vcard-line">${fmt(cnn.ms, 0)} ms · no reason (a probability)</div></div>
+      <div class="vcard"><div class="vcard-title">Die-to-die (difference)</div>${d2dHtml}</div>`;
+  }
+
+  function renderLiveInspector(body) {
+    const r = live.res;
+    if (!r) { body.innerHTML = `<div style="padding:16px;color:var(--text-dim);font-size:12px">No live result yet. Set the controls and press Run.</div>`; return; }
+    const ro = (v) => `<span class="value readonly" title="${esc(v)}">${esc(v)}</span>`;
+    const f = (l, v, u) => `<div class="insp-field"><label>${l}</label><div>${v}${u ? ` <span class="unit">${u}</span>` : ''}</div></div>`;
+    const sec = (t, inner) => `<div class="insp-section"><div class="insp-section-header"><span class="chev">▼</span> ${t}</div><div class="insp-fields">${inner}</div></div>`;
+    const rs = r.verifier.reason, P = r.params, tm = r.runtime.timings_ms;
+    body.innerHTML =
+      sec('Provenance', f('Badge', ro(r.provenance)) + f('Input id', ro(r.input_id)) + f('Seed', ro(r.seed)) +
+        f('Family / kind', ro(`${P.family} / ${P.kind}`)) + f('Split', ro(P.split)) + f('Dose', ro(P.dose), 'e⁻/px') +
+        f('LER σ / grain', ro(`${P.ler_sigma} nm / ${P.grain}`)) + f('Shift asked', ro(P.shift ? P.shift.join(', ') : 'drawn (seeded)'), 'px') + f('Warp', ro(P.warp), 'px')) +
+      sec('Verifier reason', f('Verdict', `<span class="value verdict-${vclass(r.verifier.verdict)}">${esc(r.verifier.verdict)}</span>`) +
+        f('Δβ (β₀, β₁)', ro(`(${rs.delta_betti})`)) + f('β CAD', ro(`(${rs.beta_ref})`)) + f('β image', ro(`(${rs.beta_img})`)) +
+        f('Bottleneck H0', ro(fmt(rs.bottleneck_h0, 4))) + f('Bottleneck H1', ro(fmt(rs.bottleneck_h1, 4))) +
+        f('Max SDF energy', ro(fmt(rs.max_sdf_energy, 3))) + f('Peak-z', ro(fmt(rs.peak_z, 2))) +
+        f('τ', ro(rs.tau)) + f('d* / e* / z*', ro(`${fmt(rs.d_star)} / ${fmt(rs.e_star, 2)} / ${fmt(rs.z_star, 2)}`)) +
+        f('Singleton', ro(rs.singleton ? 'yes (no same-layout stack)' : 'no')) +
+        f('Recovered shift', ro(r.verifier.recovered_shift.map(x => x.toFixed(2)).join(', ')), 'px')) +
+      sec('Ground truth', r.truth ? f('Label', ro(r.truth.label)) + f('Kind', ro(r.truth.kind)) + f('True Δβ', ro(`(${r.truth.d_beta})`)) +
+        f('Applied shift', ro(r.truth.applied_shift.map(x => x.toFixed(2)).join(', ')), 'px') + f('Resamples', ro(r.truth.resamples)) + f('Source', ro(r.truth.source))
+        : f('Ground truth', ro('none for this input'))) +
+      sec('Calibration (Module 1)', f('Layer id', ro(r.calibration.layer_id)) + f('Levels', ro(`diel ${fmt(r.calibration.mu_diel, 1)} / cond ${fmt(r.calibration.mu_cond, 1)}`), 'e⁻/px') +
+        f('Fit time', ro(fmt(r.runtime.calibration_fit_ms, 1)), 'ms') + f('Cached', ro(r.runtime.calibration_cached ? 'yes (reused)' : 'no (fitted now)'))) +
+      sec('Timings (this CPU)', f('Align', ro(fmt(tm.verifier.align, 1)), 'ms') + f('SDF energy', ro(fmt(tm.verifier.sdf_energy, 1)), 'ms') +
+        f('Topology', ro(fmt(tm.verifier.topology, 1)), 'ms') + f('CNN', ro(fmt(tm.cnn, 1)), 'ms') + f('D2D single', ro(fmt(tm.d2d_single, 1)), 'ms')) +
+      sec('Reproducibility', f('Config hash', ro(r.config_hash)) + f('Commit', ro(r.commit)) + f('API', ro(r.api_version)) + f('Request id', ro(r.request_id)));
+    body.querySelectorAll('.insp-section-header').forEach(h => h.addEventListener('click', () => h.closest('.insp-section').classList.toggle('collapsed')));
+  }
+
+  function drawLive() {
+    const g = lctx, w = lcanvas.width, h = lcanvas.height, r = live.res;
+    g.fillStyle = '#0e0e10'; g.fillRect(0, 0, w, h);
+    g.imageSmoothingEnabled = false; g.textAlign = 'left'; g.font = '11px monospace'; g.fillStyle = '#888890';
+    if (!r) { g.fillText(live.busy ? 'Running…' : 'Set the controls on the left and press Run. Every image here is labelled with where it came from.', 20, 30); return; }
+    const kind = r.source_type === 'file' ? 'file' : 'sim';
+    const names = { cad: 'CAD', wafer: 'Wafer W (ground truth)', sem: 'SEM image', field: 'Conductor field P' };
+    const panels = state.layers.filter(l => l.visible);
+    if (!panels.length) return;
+    const cols = Math.min(2, panels.length), rows = Math.ceil(panels.length / cols);
+    const size = Math.max(64, Math.min((w - 40) / cols - 12, (h - 60) / rows - 24)) * state.zoom;
+    panels.forEach((l, i) => {
+      const x = 20 + (i % cols) * (size + 12) + state.panX, y = 46 + Math.floor(i / cols) * (size + 24) + state.panY;
+      g.fillStyle = '#d0d0d4'; g.fillText(names[l.id] || l.name, x, y - 5);
+      g.strokeStyle = '#3a3a40'; g.strokeRect(x, y, size, size);
+      const im = live.imgs[l.id];
+      if (!im) { g.fillStyle = '#888890'; g.fillText('no ground truth for this input', x + 10, y + size / 2); return; }
+      if (im.complete && im.naturalWidth) g.drawImage(im, x, y, size, size);
+      if (['sem', 'field'].includes(l.id)) {
+        const m = r.overlays.window[0] / 256 * size; g.strokeStyle = 'rgba(74,158,255,0.7)'; g.setLineDash([4, 3]);
+        g.strokeRect(x + m, y + m, size - 2 * m, size - 2 * m); g.setLineDash([]);
+      }
+      drawBadge(g, x, y, r.provenance, kind);
+    });
+    g.fillStyle = '#d0d0d4';
+    g.fillText(`${r.input_id} · seed ${r.seed} · ${r.params.family} · ${r.params.kind} · dose ${r.params.dose} e⁻/px · dashed box = comparison window`, 20, 18);
+  }
+
+  function renderStatus() {
+    if (state.mode === 'live' && live.res) {
+      $('#st-seed').textContent = live.res.seed; $('#st-split').textContent = live.res.params.split; $('#st-n').textContent = '1 (live)';
+      $('#title-project').textContent = `— live · ${live.res.provenance} · seed ${live.res.seed}`;
+    } else {
+      $('#st-seed').textContent = RUN.seed; $('#st-split').textContent = RUN.split; $('#st-n').textContent = S.length;
+      $('#title-project').textContent = `— testbed seed ${RUN.seed} / split ${RUN.split}`;
+    }
+  }
+
   function refresh() { renderTable(); renderInspector(); draw(); }
 
   const m4 = RUN.module4;
@@ -1047,12 +1335,14 @@
   $('#st-m4').textContent = `${m4.field}, τ=${m4.tau}, pre-smooth ${m4.preSmooth} px`;
   $('#about-cfg').textContent = JSON.stringify({ seed: RUN.seed, split: RUN.split, per_family_kind: RUN.perCell, module4: m4, tile_px: RUN.tile, margin_px: RUN.margin, dose_e_per_px: RUN.testbedCfg.sem.dose }, null, 2);
 
+  $('#tab-grid').textContent = `Sample Grid · ${RUN.split} split, synthetic`;
   renderExplorer(); renderLayers(); renderTable(); renderInspector(); renderMetrics(); renderPipeline(); resize();
+  checkHealth().then(ok => log(ok ? 'INFO' : 'WARN', 'Live', ok ? `App server online (config ${live.health.config_hash}, commit ${live.health.commit.slice(0, 12)}, CNN loaded: ${live.health.cnn_loaded})` : 'App server not reachable: Live mode is unavailable, the static grid still works'));
   window.addEventListener('resize', resize);
   log('INFO', 'System', `Loaded ${S.length} synthetic samples (seed ${RUN.seed}, split ${RUN.split})`);
-  log('INFO', 'Pipeline', `Module 4 only: field=${m4.field}, τ=${m4.tau}; levels from ${m4.levelsSource}; SDF energy ${m4.sdfEnergy}`);
+  log('INFO', 'Pipeline', `Verifier (frozen v2 config): field=${m4.field}, τ=${m4.tau}; levels from ${m4.levelsSource}; SDF energy ${m4.sdfEnergy}`);
   const ok = S.filter(d => d.correct).length;
-  log(ok / S.length < 0.5 ? 'WARN' : 'INFO', 'Pipeline', `Verdict class matches truth for ${ok}/${S.length} samples (untuned Module 4 with these settings)`);
+  log(ok / S.length < 0.5 ? 'WARN' : 'INFO', 'Pipeline', `Verdict class matches truth for ${ok}/${S.length} samples (frozen v2 config)`);
 })();
 </script>
 </body>
