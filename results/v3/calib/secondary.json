@@ -1,0 +1,34 @@
+{
+  "declared_before_test": true,
+  "version": "v3",
+  "data": "synthetic",
+  "role": "pre-declared SECONDARY variant, reported beside the frozen primary; not selected on test",
+  "difference_from_primary": "per-neck cut margin off (m_cut = null): splits use v2's lifetime-tau rule; everything else identical, including the near-miss thresholds (selected under the primary killer rule)",
+  "why": "the primary's m_cut trades open recall for fewer notch false killers (val: open 85% -> 74%, notch 43% -> 9%); this variant shows that cost on test",
+  "event_rule_cfg": {
+    "rule": "v3_events",
+    "pair_dist": 30.0,
+    "m_merge": 0.6,
+    "normalise": false,
+    "m_norm": 0.0,
+    "body_radius": 6.0,
+    "m_cut": null,
+    "e_edge": null
+  },
+  "pipeline_cfg": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0779973055279618,
+    "e_star": 2.5748902690949445,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.46093693673947
+  },
+  "test_seed": 20261018
+}
