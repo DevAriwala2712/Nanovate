@@ -88,14 +88,14 @@ Where the verifier loses: on a layout the CNN was trained on, the CNN is more ac
 | Killers caught (flagged KILLER) | 45 [42, 48] | 38 [34, 41] | 26 [22, 29] | 31 [26, 35] |
 | Killers flagged NEAR_MISS (still reviewed) | 3 [1, 6] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
 | Killers missed (passed as harmless) | 2 [0, 4] | 12 [9, 16] | 24 [21, 28] | 19 [15, 24] |
-| Harmless sites flagged KILLER | 22 [12, 34] | 73 [28, 146] | 46 [40, 51] | 103 [61, 176] |
+| Non-killer sites flagged KILLER (incl. near-misses) | 22 [12, 34] | 73 [28, 146] | 46 [40, 51] | 103 [61, 176] |
 | Near-misses flagged NEAR_MISS (reliability bin) | 73 [61, 83] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
 | Harmless sites flagged NEAR_MISS | 36 [0, 107] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
 | All sites sent to an engineer | 179 [142, 250] | 111 [66, 185] | 71 [63, 78] | 133 [91, 209] |
 
 Site mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament (near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.
 
-Other prevalences (killers missed / harmless sites flagged KILLER):
+Other prevalences (killers missed / non-killer sites flagged KILLER):
 
 | Real killers | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
 |---|---|---|---|---|

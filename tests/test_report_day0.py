@@ -25,3 +25,14 @@ def test_day0_block_update_is_idempotent(tmp_path):
     update_block(doc, render_day0(root), (DAY0_START, DAY0_END))
     text = doc.read_text()
     assert text.count(DAY0_START) == 1 and text.count(DAY0_END) == 1 and "old" not in text and text.endswith("tail\n")
+
+
+def test_scenario_rows_name_non_killers_not_harmless():
+    """'flagged KILLER' counts near-miss sites too, so the row must say non-killer, not harmless."""
+    md = render_day0(_root_with_scenario(tmp_path_dummy()))
+    assert "Non-killer sites flagged KILLER (incl. near-misses)" in md and "Harmless sites flagged KILLER" not in md
+
+
+def tmp_path_dummy():
+    import tempfile
+    return Path(tempfile.mkdtemp())

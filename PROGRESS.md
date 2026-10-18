@@ -417,8 +417,8 @@ Branch `day0-value-case`. `pytest -q` = 184 passed (14 new). Synthetic data.
 - `report.render_day0` -> generated blocks in README ("Why use this: the day-0 case") and `docs/USE_CASE.md`.
 
 ### Measured (projection, 1,000 sites, 5% killers; numbers generated in README / USE_CASE.md)
-The verifier misses the fewest killers on a new via layer (2 [0, 4] vs CNN 12 [9, 16], die-to-die 19-24) and flags the fewest harmless
-sites as killers (22 [12, 34] vs 46-103), but its total queue is the largest (179 [142, 250] vs 71-133) because it also sends a NEAR_MISS
+The verifier misses the fewest killers on a new via layer (2 [0, 4] vs CNN 12 [9, 16], die-to-die 19-24) and flags the fewest non-killer
+sites (incl. near-misses) as killers (22 [12, 34] vs 46-103), but its total queue is the largest (179 [142, 250] vs 71-133) because it also sends a NEAR_MISS
 bin: 73 real near-misses plus 36 [0, 107] harmless sites. Whether that bin is a feature (reliability screening) or cost depends on the fab;
 both are shown. The wide CI on harmless NEAR_MISS comes from n = 24 nuisance samples.
 

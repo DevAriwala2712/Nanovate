@@ -217,7 +217,7 @@ def render_day0(root: str | Path) -> str:
             return f"{r['mean'].iloc[0]:.0f} [{max(r.ci_lo.iloc[0], 0):.0f}, {r.ci_hi.iloc[0]:.0f}]" if len(r) else "n/a"
         p = 0.05
         labels = [("killers_caught", "Killers caught (flagged KILLER)"), ("killers_flagged_near_miss", "Killers flagged NEAR_MISS (still reviewed)"),
-                  ("killers_missed", "Killers missed (passed as harmless)"), ("harmless_sent_as_killer", "Harmless sites flagged KILLER"),
+                  ("killers_missed", "Killers missed (passed as harmless)"), ("harmless_sent_as_killer", "Non-killer sites flagged KILLER (incl. near-misses)"),
                   ("near_miss_flagged", "Near-misses flagged NEAR_MISS (reliability bin)"), ("nuisance_flagged_near_miss", "Harmless sites flagged NEAR_MISS"),
                   ("sites_to_engineer", "All sites sent to an engineer")]
         rows = [[lab, *[cell(m, k, p) for m in methods]] for k, lab in labels]
@@ -228,7 +228,7 @@ def render_day0(root: str | Path) -> str:
                        "(near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.")
         rows = [[f"{100 * q:.0f}%", *[f"{cell(m, 'killers_missed', q)} / {cell(m, 'harmless_sent_as_killer', q)}" for m in methods]] for q in sorted(set(sc.prevalence)) if q != p]
         if rows:
-            parts.append("Other prevalences (killers missed / harmless sites flagged KILLER):\n\n" + _md(["Real killers", *[DAY0_METHODS[m] for m in methods]], rows))
+            parts.append("Other prevalences (killers missed / non-killer sites flagged KILLER):\n\n" + _md(["Real killers", *[DAY0_METHODS[m] for m in methods]], rows))
     if be is None:
         parts.append("#### Label break-even\n\nThe label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run**.")
     else:
