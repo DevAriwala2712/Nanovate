@@ -84,3 +84,24 @@ def test_device_option_defaults_to_cpu_and_unknown_device_fails():
     imgs, cads, labels = _toy(2, size=64)
     with pytest.raises((RuntimeError, AssertionError, ValueError)):
         train_cnn(imgs, cads, labels, CnnCfg(epochs=1, batch=2, device="not-a-device"))
+
+
+def test_train_set_family_argument():
+    """The CNN train-set recipe takes a layout family; the default stays Manhattan."""
+    from nanovate.baselines.data import make_cnn_train_set
+    imgs, cads, ys, ds = make_cnn_train_set(1, 1, seed=0, family="via")
+    assert imgs.shape == (6, 256, 256) and ys.sum() == 3
+    ref = make_cnn_train_set(1, 1, seed=0)
+    assert not np.array_equal(ref[1], cads)
+
+
+def test_warm_start_does_not_mutate_init_and_starts_from_it():
+    """Fine-tuning starts from a deep copy of ``init``; the shared base model is never changed."""
+    imgs, cads, ys = _toy(4)
+    base, _ = train_cnn(imgs, cads, ys, CnnCfg(epochs=1))
+    before = {k: v.clone() for k, v in base.state_dict().items()}
+    ft, _ = train_cnn(imgs, cads, ys, CnnCfg(epochs=1, lr=1e-9), init=base)
+    assert all(torch.equal(before[k], v) for k, v in base.state_dict().items())
+    assert torch.allclose(ft.stem[0].weight, base.stem[0].weight, atol=1e-6)
+    scratch, _ = train_cnn(imgs, cads, ys, CnnCfg(epochs=1, lr=1e-9, seed=5))
+    assert not torch.allclose(scratch.stem[0].weight, base.stem[0].weight, atol=1e-6)

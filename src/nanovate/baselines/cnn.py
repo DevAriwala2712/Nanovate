@@ -7,6 +7,7 @@ as the verifier, CPU, seeded. The decision threshold is chosen on Manhattan val 
 """
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 
 import numpy as np
@@ -78,12 +79,16 @@ def _augment(x: torch.Tensor, rng: np.random.Generator) -> torch.Tensor:
     return torch.stack(out)
 
 
-def train_cnn(images: np.ndarray, cads: np.ndarray, labels: np.ndarray, cfg: CnnCfg = CnnCfg()) -> tuple[ResNetSmall, dict]:
-    """Train on the given (Manhattan train) patches. Returns (model, history). Deterministic in cfg.seed."""
+def train_cnn(images: np.ndarray, cads: np.ndarray, labels: np.ndarray, cfg: CnnCfg = CnnCfg(),
+              init: ResNetSmall | None = None) -> tuple[ResNetSmall, dict]:
+    """Train on the given patches. Returns (model, history). Deterministic in cfg.seed (CPU).
+
+    ``init``: start from a deep copy of these weights (fine-tuning); ``init`` itself is not modified.
+    """
     torch.manual_seed(cfg.seed)
     rng = np.random.default_rng(cfg.seed)
     dev = torch.device(cfg.device)
-    model = ResNetSmall(cfg.width).to(dev)
+    model = (copy.deepcopy(init) if init is not None else ResNetSmall(cfg.width)).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
     y = torch.from_numpy(np.asarray(labels, dtype=np.float32)).to(dev)
     pos_w = torch.tensor(float((y == 0).sum()) / max(float((y == 1).sum()), 1.0))

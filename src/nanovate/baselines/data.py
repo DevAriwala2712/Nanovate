@@ -17,9 +17,11 @@ def with_dose(cfg: TestbedCfg, dose: float) -> TestbedCfg:
 
 
 def make_cnn_train_set(
-    n_layouts: int, dies: int, seed: int = 0, doses: tuple = TRAIN_DOSES, cfg: TestbedCfg | None = None
+    n_layouts: int, dies: int, seed: int = 0, doses: tuple = TRAIN_DOSES, cfg: TestbedCfg | None = None,
+    family: str = "manhattan", split: str = "train",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Manhattan *train* split: every kind on ``n_layouts`` x ``dies``, a random dose per sample.
+    """``family`` / ``split`` patches (default Manhattan train): every kind on ``n_layouts`` x ``dies``,
+    a random dose per sample. Non-Manhattan families are used only to fine-tune the baseline (break-even).
 
     Returns (images e-/px, cads bool, killer labels, doses). Deterministic in ``seed``.
     """
@@ -30,6 +32,6 @@ def make_cnn_train_set(
         for die in range(dies):
             for kind in KINDS:
                 dose = float(rng.choice(doses))
-                s = make_sample("manhattan", "train", lay, die, kind, with_dose(base, dose), seed)
+                s = make_sample(family, split, lay, die, kind, with_dose(base, dose), seed)
                 imgs.append(s.image); cads.append(s.cad); ys.append(s.killer); ds.append(dose)
     return np.stack(imgs), np.stack(cads), np.array(ys), np.array(ds)
