@@ -195,6 +195,192 @@ class SimulatedSource:
                                truth, refs, (), self.input_id())
 
 
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+TIFF_MAGIC = (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+")
+MAX_SIDE = 2048            # px, larger images are refused before decoding (413)
+
+
+def _decode(data: bytes, field: str) -> tuple[np.ndarray, str]:
+    """PNG (gray, 1/8/16-bit) or TIFF (one 2D page) -> (array, 'png' | 'tiff'). Raises InputError otherwise."""
+    import io
+
+    if data.startswith(PNG_MAGIC):
+        from PIL import Image
+
+        try:
+            im = Image.open(io.BytesIO(data))
+            if max(im.size) > MAX_SIDE:
+                raise InputError("too_large", f"{im.size[0]} x {im.size[1]} px exceeds the {MAX_SIDE} px cap", field, status=413)
+            if im.mode not in ("1", "L", "I;16", "I;16B", "I;16L", "I", "F"):
+                raise InputError("bad_dtype", f"PNG mode {im.mode} is not single-channel greyscale (convert to 8/16-bit grey)", field)
+            return np.array(im), "png"
+        except InputError:
+            raise
+        except Exception as e:  # noqa: BLE001 (any decoder failure is a bad file, not a server error)
+            raise InputError("unsupported_format", f"could not decode PNG: {e}", field, status=415) from e
+    if data[:4] in TIFF_MAGIC:
+        import tifffile
+
+        try:
+            with tifffile.TiffFile(io.BytesIO(data)) as tf:
+                shape = tf.series[0].shape
+                if len(shape) >= 2 and max(shape[-2:]) > MAX_SIDE:
+                    raise InputError("too_large", f"TIFF {shape} exceeds the {MAX_SIDE} px cap", field, status=413)
+                if len(tf.pages) > 1 or len(shape) != 2:
+                    raise InputError("bad_dtype", f"TIFF must hold one 2D single-channel page, got shape {shape} in {len(tf.pages)} page(s)", field)
+                return tf.asarray(), "tiff"
+        except InputError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise InputError("unsupported_format", f"could not decode TIFF: {e}", field, status=415) from e
+    raise InputError("unsupported_format", "unsupported format: use PNG or TIFF (CAD may also be GDS)", field, status=415)
+
+
+def _is_gds(data: bytes) -> bool:
+    return len(data) >= 4 and data[2:4] == b"\x00\x02"   # first record is HEADER (record type 0x00, data type 0x02)
+
+
+def _gds_cad(data: bytes, sc) -> np.ndarray:
+    """Rasterise one GDS cell/layer onto the 256 x 256 tile at 1 nm/px (testbed convention: x -> column, y -> row)."""
+    import os
+    import tempfile
+
+    import gdstk
+
+    from ..testbed.layouts import rasterize
+
+    if sc.gds_cell is None or sc.gds_layer is None:
+        raise InputError("bad_sidecar", "a GDS CAD needs gds_cell and gds_layer in the sidecar", "gds_cell")
+    fd, path = tempfile.mkstemp(suffix=".gds")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        try:
+            lib = gdstk.read_gds(path)
+        except Exception as e:  # noqa: BLE001
+            raise InputError("unsupported_format", f"could not read GDS: {e}", "cad", status=415) from e
+    finally:
+        os.unlink(path)
+    cells = {c.name: c for c in lib.cells}
+    if sc.gds_cell not in cells:
+        raise InputError("bad_sidecar", f"GDS has no cell {sc.gds_cell!r} (cells: {sorted(cells)[:10]})", "gds_cell")
+    scale = lib.unit / 1e-9                                  # user units -> nm
+    polys = []
+    for p in cells[sc.gds_cell].get_polygons(layer=sc.gds_layer, datatype=sc.gds_datatype):
+        xy = np.asarray(p.points, dtype=float) * scale - np.asarray(sc.origin_nm)
+        if sc.gds_flip_y:
+            xy[:, 1] = -xy[:, 1]
+        polys.append(xy / PIXEL_NM)
+    if not polys:
+        raise InputError("empty_cad", f"GDS cell {sc.gds_cell!r} has no polygons on layer {sc.gds_layer}/{sc.gds_datatype}", "cad")
+    return rasterize(polys, TILE)
+
+
+@dataclass(frozen=True)
+class FileSource:
+    """Image + CAD + JSON sidecar from files, plus 3 scribe pairs or a cached calibration id, plus 0-2 reference dies.
+
+    Image units: TIFF values are taken as e-/px (times ``intensity_scale`` if given); PNG grey levels need
+    ``intensity_scale`` (e-/px per level), else the upload is refused. CAD: PNG/TIFF mask (non-zero = conductor)
+    or GDS (sidecar names cell, layer, datatype, origin). Never infers nm/px; refuses anything but 1 nm/px, 256 px.
+    """
+
+    image: bytes
+    cad: bytes
+    sidecar: bytes
+    scribe_cad: tuple = ()
+    scribe_image: tuple = ()
+    calibration_id: str | None = None
+    references: tuple = ()
+    names: dict = field(default_factory=dict)   # field -> original file name (provenance only)
+
+    def _sidecar(self):
+        from pydantic import ValidationError
+
+        from .schemas import Sidecar
+
+        try:
+            sc = Sidecar.model_validate_json(self.sidecar)
+        except ValidationError as e:
+            er = e.errors()[0]
+            loc = ".".join(str(x) for x in er.get("loc", ())) or "sidecar"
+            raise InputError("bad_sidecar", f"sidecar {loc}: {er.get('msg')}", loc) from e
+        if sc.pixel_nm != PIXEL_NM:
+            raise InputError("pixel_size_out_of_domain", f"pixel size {sc.pixel_nm:g} nm/px: the verifier was built for {PIXEL_NM:g} nm/px "
+                             "(every length in it is in px). It is refused, not rescaled.", "pixel_nm")
+        if sc.layer_id.startswith("sim"):
+            raise InputError("bad_sidecar", "layer ids starting with 'sim' are reserved for simulated layers", "layer_id")
+        return sc
+
+    def _image(self, data: bytes, field: str, sc) -> np.ndarray:
+        arr, fmt = _decode(data, field)
+        if fmt == "png" and sc.intensity_scale is None:
+            raise InputError("bad_sidecar", "a PNG image needs intensity_scale (e-/px per grey level) in the sidecar; "
+                             "grey levels are not counts and are not guessed", "intensity_scale")
+        if arr.dtype == bool or not (np.issubdtype(arr.dtype, np.integer) or np.issubdtype(arr.dtype, np.floating)) or arr.dtype == np.float16:
+            raise InputError("bad_dtype", f"{field} dtype {arr.dtype} not supported", field)
+        return arr.astype(np.float64) * (sc.intensity_scale or 1.0)
+
+    def _mask(self, data: bytes, field: str, sc) -> np.ndarray:
+        if field == "cad" and _is_gds(data):
+            return _gds_cad(data, sc)
+        arr, _ = _decode(data, field)
+        if arr.dtype != bool and not np.issubdtype(arr.dtype, np.integer):
+            raise InputError("bad_dtype", f"{field} must be an integer or 1-bit mask (non-zero = conductor), got {arr.dtype}", field)
+        return arr != 0
+
+    def input_id(self) -> str:
+        h = hashlib.sha256()
+        for b in (self.image, self.cad, self.sidecar, *self.scribe_cad, *self.scribe_image, *self.references):
+            h.update(hashlib.sha256(b).digest())
+        h.update((self.calibration_id or "").encode())
+        return "file-" + h.hexdigest()[:16]
+
+    def load(self) -> InspectionInput:
+        sc = self._sidecar()
+        image, cad = validate_arrays(self._image(self.image, "image", sc), self._mask(self.cad, "cad", sc))
+        if self.scribe_cad or self.scribe_image:
+            if len(self.scribe_cad) != 3 or len(self.scribe_image) != 3:
+                raise InputError("calibration_missing", f"calibration needs exactly 3 scribe CAD masks and 3 scribe images, "
+                                 f"got {len(self.scribe_cad)} and {len(self.scribe_image)}", "scribe")
+            scribe = []
+            for i, (c, im) in enumerate(zip(self.scribe_cad, self.scribe_image)):
+                si, scd = validate_arrays(self._image(im, f"scribe_image[{i}]", sc), self._mask(c, f"scribe_cad[{i}]", sc),
+                                          f"scribe_image[{i}]", f"scribe_cad[{i}]")
+                scribe.append((scd, si))
+            cal = CalibrationRef(scribe=tuple(scribe))
+        elif self.calibration_id:
+            cal = CalibrationRef(calibration_id=self.calibration_id)
+        else:
+            raise InputError("calibration_missing", "Upload 3 scribe patches or name an existing calibration id; "
+                             "the verifier will not guess the conductor/dielectric levels.", "calibration")
+        if len(self.references) > 2:
+            raise InputError("bad_request", f"at most 2 reference dies, got {len(self.references)}", "reference", status=400)
+        refs = []
+        for i, r in enumerate(self.references):
+            ri = self._image(r, f"reference[{i}]", sc)
+            if ri.shape != image.shape:
+                raise InputError("shape_mismatch", f"reference[{i}] {ri.shape} differs from the image {image.shape}", f"reference[{i}]")
+            refs.append(validate_arrays(ri, cad, f"reference[{i}]")[0])
+        warnings = ["Loaded from file: no ground truth exists, so no verdict is marked correct or wrong.",
+                    "Every method here was built and fitted on simulated data; a real SEM image is outside that domain (sim-to-real gap)."]
+        if sc.dose is None:
+            warnings.append("Dose unknown: die-to-die has no rule to apply.")
+        elif float(sc.dose) not in DOSE_GRID:
+            warnings.append(f"Dose {sc.dose:g} e-/px is not one of the die-to-die rule doses {list(DOSE_GRID)}: die-to-die is not available.")
+        if not refs:
+            warnings.append("No reference die uploaded: die-to-die is not available.")
+        if cal.calibration_id:
+            warnings.append(f"Calibration reused from cached id {cal.calibration_id!r} (fitted on that layer's own scribe patches).")
+        files = {k: {"name": self.names.get(k, k), "sha256": hashlib.sha256(b).hexdigest()[:16]}
+                 for k, b in [("image", self.image), ("cad", self.cad), ("sidecar", self.sidecar)]
+                 + [(f"scribe_cad[{i}]", b) for i, b in enumerate(self.scribe_cad)] + [(f"scribe_image[{i}]", b) for i, b in enumerate(self.scribe_image)]
+                 + [(f"reference[{i}]", b) for i, b in enumerate(self.references)]}
+        meta = InputMeta(PIXEL_NM, None if sc.dose is None else float(sc.dose), cal.calibration_id or sc.layer_id, "file", BADGE_FILE,
+                         {"files": files, "sidecar": sc.model_dump(exclude_none=True), "calibration_id": self.calibration_id}, 0)
+        return InspectionInput(image.astype(np.float32), cad, meta, cal, None, tuple(refs), tuple(warnings), self.input_id())
+
+
 class ToolSource:
     """Interface stub for a review-SEM vendor adapter. NOT implemented; the app has no route that uses it.
 

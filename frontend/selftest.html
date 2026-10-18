@@ -236,6 +236,63 @@
       unload(P);
     },
   };
+  tests['evidence tab: tables from /results, losses stated with their CSV, synthetic label'] = async () => {
+    const P = await load();
+    P.q('[data-mode="evidence"]').click();
+    for (let i = 0; i < 60 && !P.q('#evidence-view table'); i++) await sleep(100);
+    const ev = await (await fetch('/api/v1/results')).json();
+    const nTables = ev.readme.sections.concat(ev.day0.sections).filter(s => s.headers.length).length;
+    assert(P.qa('#evidence-view table').length === nTables, `expected ${nTables} tables, got ${P.qa('#evidence-view table').length}`);
+    const txt = P.q('#evidence-view').textContent;
+    assert(txt.includes('synthetic data') && txt.includes('Where the verifier loses'), 'synthetic label or losses missing');
+    assert(txt.includes(`${ev.losses.cnn_speed_ratio.value.toFixed(0)}× faster`) && txt.includes('results/v2/exp6/latency.csv'), 'speed ratio or its source missing');
+    assert(txt.includes('no day-0 advantage') && txt.includes('Manhattan'), 'curvy / Manhattan loss missing');
+    const firstCell = ev.day0.sections.find(s => s.headers.length).rows[0][1];
+    assert(txt.includes(firstCell), 'a table cell from /results is not shown verbatim');
+    P.q('[data-mode="grid"]').click(); await sleep(30);
+    assert(P.win.getComputedStyle(P.q('#evidence-view')).display === 'none', 'evidence view still visible in grid mode');
+    assert(P.win.__errs.length === 0, 'JS errors: ' + P.win.__errs);
+    unload(P);
+  };
+  tests['upload: required fields checked before sending, server errors land on their row'] = async () => {
+    const P = await load();
+    let calls = 0;
+    mock(P, (url) => {
+      if (url.endsWith('/health')) return respond(P.win, 200, HEALTH);
+      calls++;
+      return respond(P.win, 422, { error: { code: 'pixel_size_out_of_domain', message: 'pixel size 2 nm/px: refused', field: 'pixel_nm', request_id: 'u1' } });
+    });
+    P.q('[data-mode="live"]').click(); P.q('#live-upload').click(); await sleep(150);
+    assert(P.q('#modal-upload').classList.contains('open'), 'upload modal did not open');
+    P.q('#up-submit').click(); await sleep(50);
+    assert(calls === 0 && P.q('[data-up="image"] .error').textContent.includes('image'), 'missing image not caught in the browser');
+    const set = (sel, name) => { const dt = new P.win.DataTransfer(); dt.items.add(new P.win.File(['x'], name)); P.q(sel).files = dt.files; };
+    set('#up-image', 'a.tif'); set('#up-cad', 'c.png');
+    P.q('#up-submit').click(); await sleep(50);
+    assert(calls === 0 && P.q('[data-up="pixel_nm"] .error').textContent.includes('never inferred'), 'missing pixel size not caught');
+    P.q('#up-pixel').value = '2'; P.q('#up-layer').value = 'L1';
+    P.q('#up-submit').click(); await sleep(50);
+    assert(calls === 0 && P.q('[data-up="calibration"] .error').textContent.includes('3 scribe'), 'missing calibration not caught');
+    for (const id of ['#up-scribe-cad', '#up-scribe-image']) { const dt = new P.win.DataTransfer(); for (let i = 0; i < 3; i++) dt.items.add(new P.win.File(['x'], `s${i}.png`)); P.q(id).files = dt.files; }
+    P.q('#up-submit').click(); for (let i = 0; i < 30 && calls === 0; i++) await sleep(50); await sleep(100);
+    assert(calls === 1, 'upload request not sent');
+    assert(P.q('[data-up="pixel_nm"] .error').textContent.includes('pixel_size_out_of_domain'), 'server error not shown on the pixel row');
+    assert(P.q('#modal-upload').classList.contains('open'), 'modal closed on error');
+    unload(P);
+  };
+  tests['loaded file: warn badge in the status bar, warnings shown, reports enabled'] = async () => {
+    const P = await load(); PWIN = P.win;
+    const r = fileLike(); r.warnings = ['Loaded from file: no ground truth exists, so no verdict is marked correct or wrong.'];
+    mock(P, okHandler(r));
+    assert(P.q('#live-report-json').disabled, 'report enabled before any result');
+    await runLive(P);
+    assert(P.q('#st-badge').textContent === 'LOADED FROM FILE', 'status bar still says synthetic for a loaded file');
+    assert(P.q('#live-banner').textContent.includes('no ground truth'), 'file warning not shown');
+    assert(!P.q('#live-report-json').disabled && !P.q('#live-report-html').disabled, 'report buttons not enabled');
+    P.q('[data-mode="grid"]').click(); await sleep(30);
+    assert(P.q('#st-badge').textContent === 'SYNTHETIC DATA', 'badge not restored for the static grid');
+    unload(P);
+  };
   for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]]) {
     tests[`layout ${w}x${h}: no clipped controls or spilled text, Run visible, patch view usable`] = async () => {
       const P = await load(w, h); PWIN = P.win;

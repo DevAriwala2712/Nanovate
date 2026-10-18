@@ -43,6 +43,12 @@ def test_api_text_is_escaped_where_inserted():
     for field in ("e.api.message", "e.api.code", "r.provenance", "r.d2d.why", "cnn.domain_note"):
         for m in re.finditer(re.escape(field), SCRIPT):
             ctx = SCRIPT[max(0, m.start() - 6):m.start()]
+            line = SCRIPT[SCRIPT.rfind("\n", 0, m.start()) + 1:m.start()]
+            k = max(line.rfind("esc("), line.rfind("ro("))
+            if k >= 0 and line[k:].count("(") > line[k:].count(")"):
+                continue   # inside an open esc( ... ) / ro( ... ) call
+            if "fillText(" in SCRIPT[max(0, m.start() - 200):m.start()].rsplit(";", 1)[-1]:
+                continue   # canvas text, never parsed as HTML
             if SCRIPT[m.end():m.end() + 2] in (" ?", " &", " |", ").") or SCRIPT[m.end():m.end() + 4] == " ===":
                 continue   # used as a condition or read, not inserted
             assert "esc(" in ctx or "ro(" in ctx or "textContent" in SCRIPT[max(0, m.start() - 60):m.start()] or "log(" in SCRIPT[max(0, m.start() - 80):m.start()] \

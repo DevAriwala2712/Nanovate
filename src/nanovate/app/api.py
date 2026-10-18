@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import logging
 import uuid
 from importlib import metadata
@@ -15,21 +16,27 @@ from pathlib import Path
 
 import numpy as np
 from scipy import ndimage as ndi
-from fastapi import FastAPI, Request
+from typing import Optional
+
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..config import TestbedCfg
 from .engine import Engine, finite
+from .evidence import evidence
 from .explain import explain, locate
-from .schemas import API_VERSION, HealthResponse, SimulateParams, SimulateResponse, VerifyRequest, VerifyResponse
-from .sources import DOSE_GRID, InputError, InspectionInput, SimulatedSource
+from .report import build_html, build_json
+from .schemas import API_VERSION, HealthResponse, ReportRequest, SimulateParams, SimulateResponse, VerifyRequest, VerifyResponse
+from .sources import DOSE_GRID, FileSource, InputError, InspectionInput, SimulatedSource
 
 log = logging.getLogger("nanovate.app")
 MAX_BODY = 20 * 1024 * 1024        # bytes, whole request
+MAX_FILE = 8 * 1024 * 1024         # bytes, any one uploaded file
 SYNTHETIC_NOTE = ("Synthetic data: simulated inputs come from the Nanovate testbed. The app analyses one patch at a time; "
                   "it does not scan wafers or control any tool. Nothing here is validated on real SEM images.")
 RANGE_ERRORS = {"greater_than_equal", "less_than_equal", "greater_than", "less_than", "too_short", "too_long", "literal_error", "finite_number"}
@@ -174,10 +181,8 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
             out["arrays"] = {"image": b64_array(inp.image), "cad": b64_array(inp.cad)}
         return out
 
-    @app.post("/api/v1/verify", response_model=VerifyResponse)
-    def verify(req: VerifyRequest, request: Request):
+    def build_verify(inp: InspectionInput, request: Request, include_arrays: bool = False) -> dict:
         e = eng()
-        inp = load_sim(req.simulate) if req.simulate is not None else e.get(req.input_id)
         res = e.analyse(inp)
         v, cnn, d2d, cal = res["verifier"], res["cnn"], res["d2d"], res["calibration"]
         truth = truth_block(inp)
@@ -212,9 +217,71 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
                "images": images_block(inp), "overlays": overlays, "runtime": finite(runtime)}
         out["locator"] = finite(locate(field, inp.cad, v["reason"]["delta_betti"], emap, e.win))
         out["explanation"] = explain(out)
-        if req.include_arrays:
+        if include_arrays:
             out["arrays"] = {"image": b64_array(inp.image), "cad": b64_array(inp.cad), "field": b64_array(field), "sdf_energy": b64_array(emap)}
         return out
+
+    @app.post("/api/v1/verify", response_model=VerifyResponse)
+    def verify(req: VerifyRequest, request: Request):
+        inp = load_sim(req.simulate) if req.simulate is not None else eng().get(req.input_id)
+        return build_verify(inp, request, req.include_arrays)
+
+    async def _read(f: UploadFile | None, name: str) -> bytes | None:
+        if f is None:
+            return None
+        data = await f.read(MAX_FILE + 1)
+        if len(data) > MAX_FILE:
+            raise InputError("too_large", f"{name} ({f.filename}) exceeds the {MAX_FILE // (1024 * 1024)} MB per-file cap", name, status=413)
+        if not data:
+            raise InputError("bad_request", f"{name} ({f.filename}) is empty", name, status=400)
+        return data
+
+    @app.post("/api/v1/upload", response_model=SimulateResponse)
+    async def upload(request: Request, image: UploadFile = File(...), cad: UploadFile = File(...),
+                     sidecar: Optional[UploadFile] = File(None), sidecar_json: Optional[str] = Form(None, max_length=4096),
+                     scribe_cad: list[UploadFile] = File([]), scribe_image: list[UploadFile] = File([]),
+                     calibration_id: Optional[str] = Form(None, max_length=128), reference: list[UploadFile] = File([])):
+        """FileSource: image + CAD + sidecar, with 3 scribe pairs or a cached calibration id, and 0-2 reference dies."""
+        e = eng()
+        if sidecar is not None:
+            sc = await _read(sidecar, "sidecar")
+        elif sidecar_json:
+            sc = sidecar_json.encode()
+        else:
+            raise InputError("bad_sidecar", "a JSON sidecar is required (pixel_nm, layer_id, ...); pixel size is never inferred", "sidecar")
+        if len(scribe_cad) > 3 or len(scribe_image) > 3 or len(reference) > 2:
+            raise InputError("bad_request", "at most 3 scribe CAD, 3 scribe images and 2 reference dies", "scribe", status=400)
+        cid = (calibration_id or "").strip() or None
+        if cid and not (scribe_cad or scribe_image) and cid not in e.cals:
+            raise InputError("unknown_calibration_id", f"calibration id {cid!r} is not cached; cached ids: {sorted(e.cals) or 'none yet'}",
+                             "calibration_id")
+        src = FileSource(await _read(image, "image"), await _read(cad, "cad"), sc,
+                         tuple([await _read(f, f"scribe_cad[{i}]") for i, f in enumerate(scribe_cad)]),
+                         tuple([await _read(f, f"scribe_image[{i}]") for i, f in enumerate(scribe_image)]),
+                         cid, tuple([await _read(f, f"reference[{i}]") for i, f in enumerate(reference)]),
+                         {"image": image.filename, "cad": cad.filename, "sidecar": sidecar.filename if sidecar else "(form field)",
+                          **{f"scribe_cad[{i}]": f.filename for i, f in enumerate(scribe_cad)},
+                          **{f"scribe_image[{i}]": f.filename for i, f in enumerate(scribe_image)},
+                          **{f"reference[{i}]": f.filename for i, f in enumerate(reference)}})
+        inp = await run_in_threadpool(src.load)
+        e.put(inp)
+        return {**envelope(request), "input_id": inp.input_id, "seed": inp.meta.seed, "provenance": inp.meta.provenance,
+                "source_type": inp.meta.source_type, "params": inp.meta.params, "images": images_block(inp), "truth": None,
+                "warnings": list(inp.warnings)}
+
+    @app.get("/api/v1/results")
+    def results(request: Request):
+        return {**envelope(request), **evidence()}
+
+    @app.post("/api/v1/report")
+    def report_(req: ReportRequest, request: Request):
+        e = eng()
+        rep = build_json(build_verify(e.get(req.input_id), request), e.config)
+        name = f"nanovate_report_{rep['input_id']}"
+        if req.format == "json":
+            return Response(json.dumps(rep, indent=1), media_type="application/json",
+                            headers={"Content-Disposition": f'attachment; filename="{name}.json"'})
+        return HTMLResponse(build_html(rep), headers={"Content-Disposition": f'attachment; filename="{name}.html"'})
 
     if frontend and Path(frontend).is_dir():
         app.mount("/", StaticFiles(directory=str(frontend), html=True), name="frontend")

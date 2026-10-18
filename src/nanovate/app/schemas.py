@@ -1,7 +1,7 @@
 """Pydantic request / response models for /api/v1 (units: dose e-/px, lengths nm = px, times ms)."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -36,6 +36,12 @@ class VerifyRequest(BaseModel):
         if (self.input_id is None) == (self.simulate is None):
             raise ValueError("give exactly one of input_id or simulate")
         return self
+
+
+class ReportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    input_id: str = Field(max_length=64)
+    format: Literal["json", "html"] = "json"
 
 
 class Envelope(BaseModel):
@@ -87,3 +93,19 @@ class VerifyResponse(Envelope):
     explanation: dict[str, list[str]]
     runtime: dict[str, Any] = Field(description="cache state and timings; the only fields that may differ between identical requests")
     arrays: Optional[dict[str, Any]] = None
+
+
+class Sidecar(BaseModel):
+    """JSON metadata that must accompany an uploaded image. Pixel size is never inferred from the image."""
+
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    pixel_nm: float = Field(description="nm per pixel; the verifier was built for 1.0")
+    layer_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.\-]+$", description="calibration cache key")
+    dose: Optional[float] = Field(None, gt=0, description="e-/px, if known (die-to-die needs one of the Exp-2 doses)")
+    intensity_scale: Optional[float] = Field(None, gt=0, description="e-/px per grey level; required for PNG images")
+    notes: Optional[str] = Field(None, max_length=500)
+    gds_cell: Optional[str] = Field(None, max_length=128, description="GDS CAD only: cell name")
+    gds_layer: Optional[int] = Field(None, ge=0, le=65535)
+    gds_datatype: int = Field(0, ge=0, le=65535)
+    origin_nm: list[float] = Field([0.0, 0.0], min_length=2, max_length=2, description="GDS (x, y) of the tile's top-left corner, nm")
+    gds_flip_y: bool = Field(False, description="flip GDS y (y-up) to image rows (y-down)")
