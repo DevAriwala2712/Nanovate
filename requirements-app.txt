@@ -1,0 +1,12 @@
+# Pinned versions of the optional [app] extra (python -m nanovate.app), as tested on 2026-10-18.
+# Install: pip install -e ".[app]" -c requirements-app.txt   (or: pip install -r requirements-app.txt)
+fastapi==0.143.5
+starlette==1.8.0
+uvicorn==0.54.0
+pydantic==2.14.1
+pydantic-core==2.50.1
+python-multipart==0.0.32
+pillow==13.0.0
+tifffile==2026.3.3
+httpx==0.28.1
+anyio==4.15.1

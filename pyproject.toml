@@ -12,6 +12,10 @@ dependencies = [
   "matplotlib", "pandas", "pytest",
 ]
 
+[project.optional-dependencies]
+# demonstrator app (python -m nanovate.app); pinned versions in requirements-app.txt. httpx: FastAPI TestClient (tests).
+app = ["fastapi", "uvicorn", "pydantic", "python-multipart", "pillow", "tifffile", "httpx"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
