@@ -1,0 +1,5 @@
+family,threshold_rule,verifier_f1,breakeven_k,clearly_better_k,n_seeds,n_test
+curvy,fixed_0.39,0.8421052631578947,0,48,3,144
+curvy,labelled,0.8421052631578947,0,192,3,144
+via,fixed_0.39,0.8783783783783784,192,none,3,144
+via,labelled,0.8783783783783784,192,none,3,144

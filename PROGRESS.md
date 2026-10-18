@@ -405,7 +405,7 @@ real-data path: independent simulator (Nebula) on the existing testbed wafers, t
 
 ---
 
-## Part 1 (in progress): the day-0 value case (`docs/superpowers/specs/2026-10-18-next-steps-design.md`)
+## Part 1: the day-0 value case (`docs/superpowers/specs/2026-10-18-next-steps-design.md`)
 Branch `day0-value-case`. `pytest -q` = 184 passed (14 new). Synthetic data.
 
 ### Built
@@ -422,5 +422,19 @@ sites (incl. near-misses) as killers (22 [12, 34] vs 46-103), but its total queu
 bin: 73 real near-misses plus 36 [0, 107] harmless sites. Whether that bin is a feature (reliability screening) or cost depends on the fab;
 both are shown. The wide CI on harmless NEAR_MISS comes from n = 24 nuisance samples.
 
-### Next
-Run `notebooks/breakeven_colab.ipynb` on Colab (user), then `python scripts/reproduce.py --skip-select --only day0 --breakeven-weights <dir>`.
+### Label break-even (run on Kaggle GPU, private kernel devariwala27/nanovate-breakeven, commit 3787540; evaluated locally)
+42 fine-tunes (2 families x 7 k x 3 seeds, 300 steps each) of `m6_cnn/cnn.pt`; test n = 144 per family (dose 50), same patches as Exp 3.
+Colab was replaced by Kaggle on the user's request (ledger ruling); GPU training is not bit-reproducible, the 3 seeds show the spread.
+| Family | Verifier F1 (no labels) | CNN k = 0 | Break-even k (seed-mean CNN F1 >= verifier) | Clearly better k (every seed's CI above) |
+|---|---|---|---|---|
+| via | 0.88 | 0.74 | 192 (both threshold rules) | none up to 768 |
+| curvy | 0.84 | 0.85 | 0 (already tied) | 48 (fixed threshold) / 192 (labelled threshold) |
+Generated tables: README "Why use this" and `docs/USE_CASE.md`; data `results/v2/breakeven/`.
+
+Findings:
+- **On via, the verifier is worth about 192 labelled images of the new layout**; even with 768 labels the fine-tuned CNN (0.91-0.92) is not clearly
+  better than the verifier (0.88 [0.82, 0.93]).
+- **On curvy there is no day-0 advantage**: the Manhattan CNN already ties the verifier with zero curvy labels, and pulls clearly ahead with 48-192.
+  Reported as is; the day-0 claim holds for the via layout, not for every new layout.
+- **Few labels make the CNN worse before better**: at k = 12 the fine-tuned CNN drops below its own k = 0 F1 (via 0.60-0.69 vs 0.74), and the seed
+  spread is large (via labelled-threshold 0.38-0.76). A day-0 user with a handful of labels would be worse off fine-tuning.

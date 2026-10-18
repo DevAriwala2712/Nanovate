@@ -102,9 +102,14 @@ Other prevalences (killers missed / non-killer sites flagged KILLER):
 | 1% | 0 [0, 1] / 23 [12, 35] | 2 [2, 3] / 76 [29, 153] | 5 [4, 6] / 47 [41, 54] | 4 [3, 5] / 107 [64, 184] |
 | 20% | 8 [0, 17] / 18 [10, 28] | 50 [36, 64] / 62 [23, 123] | 97 [83, 111] / 38 [33, 43] | 78 [61, 94] / 87 [52, 148] |
 
-#### Label break-even
+#### Label break-even: labelled images of the new layout the CNN needs to match the verifier
 
-The label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run**.
+| Family | CNN threshold | Verifier F1 | Break-even k (seed-mean F1 >= verifier) | Clearly better k (every seed's CI above) | n |
+|---|---|---|---|---|---|
+| curvy | fixed_0.39 | 0.84 | 0 | 48 | 3 seeds, n=144 |
+| curvy | labelled | 0.84 | 0 | 192 | 3 seeds, n=144 |
+| via | fixed_0.39 | 0.88 | 192 | none | 3 seeds, n=144 |
+| via | labelled | 0.88 | 192 | none | 3 seeds, n=144 |
 <!-- DAY0:END -->
 
 ## Results (v2: post-hoc fixes)

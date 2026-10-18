@@ -1,0 +1,56 @@
+{
+  "data": "synthetic",
+  "exp_cfg": {
+    "dies": 2,
+    "doses": [
+      5,
+      10,
+      20,
+      35,
+      50,
+      100,
+      200
+    ],
+    "exp1_grains": [
+      0.0,
+      0.1,
+      0.2,
+      0.3
+    ],
+    "exp1_sigmas": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "exp4_shift": 8.0,
+    "exp4_warp": 1.0,
+    "exp5_dies": 6,
+    "exp6_calib_runs": 100,
+    "exp6_patches": 1000,
+    "layouts": 12,
+    "n_boot": 1000,
+    "nominal_dose": 50.0,
+    "quick": false,
+    "seed": 0,
+    "val_dies": 2,
+    "val_layouts": 8,
+    "version": "v2"
+  },
+  "manifest": {
+    "base_weights": "m6_cnn/cnn.pt",
+    "data": "synthetic",
+    "device": "cuda",
+    "lr": 0.0005,
+    "pool": {
+      "dies": 4,
+      "layouts": 32,
+      "seed": 0
+    },
+    "steps": 300,
+    "torch": "2.11.0+cu128"
+  },
+  "note": "only the CNN baseline is adapted (family train split); verifier and test split untouched",
+  "verifier_csv": "results/v2/exp3/geometry_f1.csv"
+}
