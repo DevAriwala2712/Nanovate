@@ -84,3 +84,16 @@ def test_breakeven_eval_rows_k0_matches_m6_and_missing_weights(smoke_run, tmp_pa
     k0 = tab[(tab.k == 0) & (tab.threshold_rule == "labelled")].iloc[0]
     assert k0.threshold == 0.39 and abs(k0.f1 - f1_score(p >= 0.39, np.array([x.killer for x in s]))) < 1e-12
     assert (tmp_path / "v2" / "quick" / "breakeven" / "summary.csv").exists()
+
+
+def test_kaggle_kernel_dir_is_private_gpu_internet_and_pinned(tmp_path):
+    """The generated Kaggle kernel clones the exact commit and runs the break-even script on the GPU."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kp", "scripts/kaggle_breakeven.py"); kp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(kp)
+    d = kp.write_kernel(tmp_path / "k", user="someone", commit="abc1234def")
+    meta = json.loads((d / "kernel-metadata.json").read_text())
+    assert meta["id"] == "someone/nanovate-breakeven" and meta["is_private"] is True
+    assert meta["enable_gpu"] is True and meta["enable_internet"] is True and meta["kernel_type"] == "notebook"
+    src = "".join("".join(c["source"]) for c in json.loads((d / meta["code_file"]).read_text())["cells"])
+    assert "git checkout -q abc1234def" in src and "scripts/breakeven_train.py --device auto --out /kaggle/working/breakeven" in src
