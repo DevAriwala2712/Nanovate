@@ -1,0 +1,102 @@
+path,reason,arm
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z110_d_100.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z110_d_100_meas.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z110_d_280_002.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z110_d_280_meas_003.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z150_d_100_004.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z150_d_100_meas_005.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z150_d_280_002.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z150_d_280_meas_003.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z200_d_100_.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z200_d_100_meas_001.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z200_d_280_and_z250_d_100.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z200_d_280_meas_001.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z250_d_100_meas.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z250_d_280.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z50_d_100_5.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z50_d_280_003.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z50_d_280_meas_004.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z80_d_100_001.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z80_d_100_meas_002.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z80_d_280_006.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/crosssection_z80_d_280__meas007.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/full_array_overview.tif,overview at 74.1 nm/px (> 30 nm/px: holes ~3 px),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z110_d_100_21.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z110_d_280_22.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z150_d_100_23.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z150_d_280_24.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z200_d_100_25.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z200_d_280_26.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_100_6.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_150_7.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_175_8.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_200_9.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_220_10.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_240_11.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_250_12.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_260_13.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z50_d_280_14.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z80_d_100_15.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z80_d_175_16.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z80_d_220_17.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z80_d_250_19.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_0127_14/Gla_0127_14/z80_d_280_20.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_260_044.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_260_045.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_260_046.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_120_dset_280_002.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_120_dset_280_003.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_120_dset_280_005.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_120_dset_280_006.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_120_dset_280_025.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_140_dset_280_016.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_140_dset_280_017.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_140_dset_280_018.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_150_dset_280.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_150_dset_300.tif,single well or two wells per field (no array),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_160_dset_280_004.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_160_dset_280_012.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_160_dset_280_013.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_220_dset_280..tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_220_dset_280_008.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_220_dset_280_009.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_220_dset_280_019.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_220_dset_280_020.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_240_dset_280_014.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_280_dset_260_015.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_280_dset_260_021.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_280_dset_260_022.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_290_dset_280._001.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_290_dset_280_010.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_290_dset_280_011.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_340_dset_260_023.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/zset_340_dset_260_024.tif,tilted 52 deg (cross-section),both
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_120_dset_200_060.tif,arm B: rescaled x0.432 -> 221 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_120_dset_226_061.tif,arm B: rescaled x0.382 -> 196 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_120_dset_240_063.tif,arm B: rescaled x0.360 -> 184 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_120_dset_254_062.tif,arm B: rescaled x0.340 -> 174 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_180_057.tif,arm B: rescaled x0.480 -> 246 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_180_058.tif,arm B: rescaled x0.480 -> 246 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_214_056.tif,arm B: rescaled x0.403 -> 207 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_214_059.tif,arm B: rescaled x0.403 -> 207 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_224_076.tif,arm B: rescaled x0.367 -> 188 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_224_077.tif,arm B: rescaled x0.367 -> 188 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_234_064.tif,arm B: rescaled x0.369 -> 189 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_234_065.tif,arm B: rescaled x0.369 -> 189 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_234_078.tif,arm B: rescaled x0.351 -> 180 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_160_dset_248_055.tif,arm B: rescaled x0.348 -> 178 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_180_052.tif,arm B: rescaled x0.480 -> 246 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_180_067.tif,arm B: rescaled x0.457 -> 234 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_194_075.tif,arm B: rescaled x0.424 -> 217 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_195_053.tif,arm B: rescaled x0.443 -> 227 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_211_073.tif,arm B: rescaled x0.390 -> 200 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_211_074.tif,arm B: rescaled x0.390 -> 200 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_228_072.tif,arm B: rescaled x0.361 -> 185 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_234_066.tif,arm B: rescaled x0.369 -> 189 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_240_dset_248_054.tif,arm B: rescaled x0.348 -> 178 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_194_050.tif,arm B: rescaled x0.445 -> 228 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_194_069.tif,arm B: rescaled x0.424 -> 217 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_211_070.tif,arm B: rescaled x0.390 -> 200 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_228_049.tif,arm B: rescaled x0.379 -> 194 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_228_071.tif,arm B: rescaled x0.361 -> 185 px tall < 256,B
+data/real/zmw/extracted/Gla_29_Pd_1/2022_03_15_zset_280_dset_260_047.tif,arm B: rescaled x0.332 -> 170 px tall < 256,B

@@ -532,3 +532,17 @@ called killer 29% -> 38%. Per-patch time 99 -> 130 ms (Module 4 76 -> 107 ms). T
 the verifier leads zero-shot on via (0.84 vs 0.75). Cut detection limit on test: 4 nm (n = 4-7 per bin; val said 5 nm).
 Surprise: the fresh test seed is harder for nuisance at sigma 1.5 than v2's test seed (v2 rule 67% here vs 88% there), so
 cross-seed comparison with the v2 README table is not like-for-like; use the paired table.
+
+## Track C Rung 1: real SEM images (pre-registration, before the first real run)
+
+- `docs/NEXT_PATHS.md`: Track C (real-world data, Rungs 1-4) added and first in the suggested order (commit de73db3).
+- Data: Zenodo 8060099 (ZMW hole arrays, CC-BY-4.0) and 3747155 (InGaN figure panels, spot-check), md5-checked by
+  `scripts/real/download_rung1.py` into `data/real/` (git-ignored). Manifest + exclusions in `results/real/rung1/`.
+- Surprise 1: the approved pitch-matching rescale is infeasible (pitch/diameter 5-8 vs testbed 2.25: a G29 image would
+  shrink to ~99 x 66 px). Arm C (native px) is primary, arm B (diameter-matched) secondary; decided with the user before the run.
+- Surprise 2: every G29 TIFF has a burned-in yellow centre cross (61 px); flagged from R != B, never inpainted; overlay
+  tiles leave the primary denominator but are still reported.
+- Surprise 3: the G01 arrays are diameter series (hole size changes by column), so one fitted diameter mismatches many
+  holes (size, not topology). The InGaN panels show small pits between holes, so they are labelled not clean.
+- Clean labels are a visual judgement by the assistant (not an expert), made before any verifier run.
+- Pre-registration: `docs/REAL_DATA_PREREG.md` (target: KILLER on clean real tiles <= 5%).
