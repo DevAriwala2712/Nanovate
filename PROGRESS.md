@@ -546,3 +546,19 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
   holes (size, not topology). The InGaN panels show small pits between holes, so they are labelled not clean.
 - Clean labels are a visual judgement by the assistant (not an expert), made before any verifier run.
 - Pre-registration: `docs/REAL_DATA_PREREG.md` (target: KILLER on clean real tiles <= 5%).
+
+### Track C Rung 1 run (once; real data; `docs/REAL_DATA_RUNG1.md`)
+- Disclosure: the first `--run` crashed on tile 1 (missing import, NameError); nothing was written or seen; fixed in ead661f
+  (no setting changed, end-to-end smoke test added) and run once.
+- Primary (arm C, clean overlay-free tiles): KILLER 78.5% [66.4, 87.6] (n = 158 tiles, 32 images) vs target <= 5%: **NOT MET**.
+  G29 70.7% [60.3, 81.9] (116, 29); G01 100% (42, 3). Arm B (diameter-matched, G01): 100% (46, 3): NOT MET.
+  NEAR_MISS 18.4%; only 5/158 tiles called NUISANCE.
+- Calibration error: ||T-I||/||I|| 0.12 (looks like synthetic 0.11-0.12) but contrast-relative 0.86 (G29) / 0.92 (G01),
+  even in-sample 0.73-0.96: the linear template explains ~15-25% of real variation. G01 Module-1 contrast is NEGATIVE (-7.8).
+- Alignment: hole centre to fitted reference 6.9 nm (G29) / 23 nm (G01); Module-3 residual shift 1.7 px (G29) / 20 px (G01, max 138 px).
+- Time: calibration 46 ms; 178 ms per tile (synthetic Exp 6: 130 ms).
+- Surprises: (1) G01 calibration sign inversion -> field noise x10 inverted -> dozens of fake components per tile;
+  (2) real SE edge halos produce rings/slivers of field > 0.5 at hole rims (fake particles / holes);
+  (3) real G29 holes are ~40 nm wider than the design diameter; mismatch correlates with KILLER (Spearman 0.43, 29 images);
+  (4) the synthetic-style calibration metric hid the failure; report contrast-relative error from now on.
+- Next: Stop Point 2 (user decision). Any fix must be chosen on synthetic val, then this run repeated once.

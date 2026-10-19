@@ -1,0 +1,70 @@
+{
+  "data": "REAL SEM images (Track C Rung 1)",
+  "reference": "FITTED lattice, not CAD",
+  "prereg": "docs/REAL_DATA_PREREG.md",
+  "prereg_commit": "ead661fbe1ae7f1c70e1b45e7d00d600e29d46ff",
+  "frozen_config": "results/v3/calib/decisions.json",
+  "pipeline_cfg": {
+    "field_option": "template",
+    "tau": 0.35,
+    "pre_smooth": 1.0,
+    "region_mode": "splice",
+    "region_tol": 8,
+    "use_stack": false,
+    "align": true,
+    "d_star": 0.0779973055279618,
+    "e_star": 2.5748902690949445,
+    "gamma": 0.2,
+    "cap": 10.0,
+    "h1_fill": "dielectric",
+    "z_star": 5.46093693673947
+  },
+  "event_rule_cfg": {
+    "rule": "v3_events",
+    "pair_dist": 30.0,
+    "m_merge": 0.6,
+    "normalise": false,
+    "m_norm": 0.0,
+    "body_radius": 6.0,
+    "m_cut": 0.4,
+    "e_edge": null
+  },
+  "window": {
+    "size": 256,
+    "margin": 16
+  },
+  "arms": {
+    "C": "native pixels (primary)",
+    "B": "diameter-matched to 16 px (secondary)"
+  },
+  "n_boot": 1000,
+  "seed": 0,
+  "g29_cal_index": [
+    0,
+    16,
+    31
+  ],
+  "g01_cal_image": "z_110_overview_002.tif",
+  "g01_cal_tiles": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      4
+    ]
+  ],
+  "wall_s": 54.0970458984375,
+  "examples": [
+    "results/real/rung1/example_0_G01_center_overview_001_0-0.png",
+    "results/real/rung1/example_1_G01_center_overview_001_0-1.png",
+    "results/real/rung1/example_2_G01_center_overview_001_0-2.png",
+    "results/real/rung1/example_3_G01_center_overview_001_0-3.png",
+    "results/real/rung1/example_4_G01_center_overview_001_0-4.png"
+  ]
+}

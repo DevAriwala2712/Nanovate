@@ -1,0 +1,34 @@
+metric,scope,mean,ci_lo,ci_hi,n_tiles,n_images
+false alarm: KILLER on clean tiles,"arm B, all ZMW groups",1.0,1.0,1.0,46,3
+NEAR_MISS on clean tiles,"arm B, all ZMW groups",0.0,0.0,0.0,46,3
+false alarm: KILLER on clean tiles,"arm B, G01",1.0,1.0,1.0,46,3
+NEAR_MISS on clean tiles,"arm B, G01",0.0,0.0,0.0,46,3
+calibration rel. error ||T-I||/||I||,"arm B, G01",0.08948595470978733,0.08340153563144101,0.0961222872885262,46,3
+calibration rel. error ||T-I||/||I-mean||,"arm B, G01",0.824946747839967,0.767368872287327,0.8888093095702598,46,3
+"calibration rel. error, noise-corrected, contrast-relative","arm B, G01",0.7045815030797161,0.647275605318127,0.762218776500547,46,3
+alignment: Module-3 residual shift (px),"arm B, G01",10.364956850268468,3.634108330584126,19.320288743298388,46,3
+time per tile (ms),"arm B, G01",172.37939219858558,170.77488745042342,174.44405891502632,46,3
+KILLER on clean tiles touching the display overlay (excluded from primary),"arm C, all ZMW groups",0.6551724137931034,0.5,0.8103448275862069,58,29
+false alarm: KILLER on clean tiles,"arm C, all ZMW groups",0.7848101265822784,0.6640050551470589,0.8764975990396158,158,32
+NEAR_MISS on clean tiles,"arm C, all ZMW groups",0.18354430379746836,0.09857521417162769,0.2898871766648321,158,32
+false alarm: KILLER on clean tiles,"arm C, G01",1.0,1.0,1.0,42,3
+NEAR_MISS on clean tiles,"arm C, G01",0.0,0.0,0.0,42,3
+false alarm: KILLER on clean tiles,"arm C, G29",0.7068965517241379,0.603448275862069,0.8189655172413793,116,29
+NEAR_MISS on clean tiles,"arm C, G29",0.25,0.15517241379310345,0.35344827586206895,116,29
+"KILLER (spot-check, not clean)","arm C, INGAN:Figure 2(b) SEM Uncoated Nanoholes top view.jpg",0.6666666666666666,0.6666666666666666,0.6666666666666666,3,1
+"KILLER (spot-check, not clean)","arm C, INGAN:Figure 2(d) SEM Hybrid Nanoholes top view.jpg",0.0,0.0,0.0,3,1
+calibration rel. error ||T-I||/||I||,"arm C, G01",0.10219687633654116,0.09703087114582504,0.1072751877077022,42,3
+calibration rel. error ||T-I||/||I||,"arm C, G29",0.1182626898988932,0.11414385395050632,0.12272060067622553,174,29
+calibration rel. error ||T-I||/||I-mean||,"arm C, G01",0.9216135711347271,0.8787183720754823,0.9640828417041407,42,3
+calibration rel. error ||T-I||/||I-mean||,"arm C, G29",0.8564855716633711,0.8308915865678547,0.8867796296265734,174,29
+"calibration rel. error, noise-corrected, contrast-relative","arm C, G01",0.8631292811055473,0.8236853396782536,0.9006190819063071,42,3
+"calibration rel. error, noise-corrected, contrast-relative","arm C, G29",0.8267800782251472,0.80126018200131,0.8560585333795956,174,29
+alignment: Module-3 residual shift (px),"arm C, G01",19.993446226046867,8.684970233129922,33.5003776802009,42,3
+alignment: Module-3 residual shift (px),"arm C, G29",1.6531964987747658,1.4542625463980283,1.8451608104587212,174,29
+time per tile (ms),"arm C, G01",179.77096640485493,178.9423026902417,180.59203048869676,42,3
+time per tile (ms),"arm C, G29",177.6319437187925,176.84567114261756,178.54056458470052,174,29
+alignment: hole centre to FITTED reference centre (nm),"arm B, G01",22.58789241603549,20.615997094123642,24.50426582839458,252,2
+alignment: hole centre to FITTED reference centre (nm),"arm C, G01",23.206238628135676,21.18824306710666,25.383527196708272,255,2
+alignment: hole centre to FITTED reference centre (nm),"arm C, G29",6.893399853269661,6.137497452312419,7.734298607071619,171,29
+alignment: hole centre to FITTED reference centre (nm),"arm C, INGAN:Figure 2(b) SEM Uncoated Nanoholes top view.jpg",10.906622455127623,7.43399320879039,14.713657508988765,7,1
+alignment: hole centre to FITTED reference centre (nm),"arm C, INGAN:Figure 2(d) SEM Hybrid Nanoholes top view.jpg",8.645866180593515,5.786241826540154,11.87480425483548,8,1
