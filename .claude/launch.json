@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nanovate-app",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["-m", "nanovate.app", "--port", "8765", "--warm", "50"],
+      "port": 8765
+    }
+  ]
+}
