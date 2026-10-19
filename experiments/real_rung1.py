@@ -27,7 +27,7 @@ from nanovate.modules.calibration import calibrate
 from nanovate.modules.events import EventRuleCfg
 from nanovate.pipeline_v3 import verify_patch_v3
 from nanovate.real.lattice import detect_holes, render
-from nanovate.real.rung1 import (G01_CAL_IMAGE, G01_CAL_ROWS, G01_CAL_TILES, G29_CAL_INDEX, TILE, VIA_PX, RealImage, best_cal_tile,
+from nanovate.real.rung1 import (G01_CAL_IMAGE, G01_CAL_ROWS, G01_CAL_TILES, G29_CAL_INDEX, TILE, VIA_PX, RealImage, best_cal_tile, touches_overlay,
                                  build_reference, crop, fit_basis_nm, fitted_diameter_nm, holes_inside, load_fei,
                                  load_figure_jpg, rescale_image, select_zmw, tile_grid)
 from nanovate.topo_utils import Window

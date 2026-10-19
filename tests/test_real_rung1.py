@@ -88,3 +88,31 @@ def test_run_guard_refuses_without_committed_prereg(tmp_path, monkeypatch):
     monkeypatch.setattr(real_rung1, "_git", lambda *a: "")
     with pytest.raises(SystemExit):
         real_rung1.check_prereg(tmp_path)
+
+
+def test_run_arm_summarise_examples_smoke_on_synthetic_lattice(tmp_path):
+    """The run path end to end on a rendered synthetic hole array (no real data), incl. an overlay tile."""
+    import pandas as pd
+    from experiments import real_rung1 as R
+    from nanovate.real.rung1 import RealImage, build_reference
+
+    rng = np.random.default_rng(0)
+    lat = Lattice((0.0, 80.0), (80.0, 0.0), (40.0, 40.0), 26.0)
+    ims = {}
+    for k in ("a.tif", "b.tif"):
+        img = np.where(render(lat, (512, 768)), 140.0, 30.0)
+        img = ndi.gaussian_filter(img, 1.5) + rng.normal(0, 3, img.shape)
+        ov = np.zeros(img.shape, bool); ov[250:262, 380:390] = True
+        ims[k] = RealImage(k, "G29", k, 5.0, "test", img, 130.0, dict(sha256="x"), ov)
+    a1, a2 = np.array(lat.a1) * 5.0, np.array(lat.a2) * 5.0
+    refs = {k: build_reference(im, a1, a2, None) for k, im in ims.items()}
+    g = R._group("G29", ims, ["a.tif"], (a1, a2), None, [("a.tif", (0, 0)), ("a.tif", (0, 2)), ("a.tif", (1, 0))],
+                 [("b.tif", rc) for rc in tile_grid((512, 768))]) | dict(refs=refs)
+    labels = pd.DataFrame(dict(image_id=["a.tif", "b.tif"], label=["clean", "clean"]))
+    pc, rc = R.frozen_cfg()
+    t, cal = R.run_arm("C", [g], labels, pc, rc)
+    assert len(t) == 6 and t.overlay.sum() == 2 and len(cal) == 3
+    holes = pd.DataFrame([dict(arm="C", group="G29", image_id="b.tif", resid_nm=r * 5.0) for r in refs["b.tif"].hole_resid_px])
+    s = R.summarise(t, holes)
+    assert {"false alarm: KILLER on clean tiles", "alignment: hole centre to FITTED reference centre (nm)"} <= set(s.metric)
+    R.examples(t, {"C": [g]}, tmp_path)
