@@ -149,6 +149,37 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ---
 
+## Track C: real-world data
+
+*Added 2026-10-19. Everything above is measured on the synthetic testbed only. Track C asks whether any of it survives contact with a real microscope. Rungs run easiest first; each one is pre-registered in a `docs/REAL_*.md` file before the first real image is scored. Settings stay frozen on real data: any change is chosen on synthetic validation and the real run is repeated once, with the change disclosed.*
+
+### Rung 1: defect-free real patterned structures (false alarms, calibration, alignment)
+
+- [ ] Public, licence-clear real SEM images of simple periodic structures (line/space gratings, contact/via arrays, calibration specimens) with a stated pixel size. Download script + manifest only; no images committed.
+- [ ] Reference layout: no CAD exists, so fit a parametric layout (pitch, line width, angle, offset) on calibration regions only and render it. Labelled everywhere as a **FITTED reference, not CAD**: a fit can absorb a real defect.
+- [ ] Module 1 stand-in scribe patches: 3 named regions from calibration images.
+- [ ] Measure: wrong KILLER rate on clean structures (target ≤ 5%), calibration error, alignment error, run time. Pre-registered in `docs/REAL_DATA_PREREG.md`.
+
+*Tells us:* whether the frozen verifier stays quiet on real noise, charging and edge contrast. *Does not tell us:* anything about recall.
+
+### Rung 2: our own test chip with deliberate defects (real recall, exact ground truth)
+
+- [ ] GDS test layout (line/space and via-array blocks, clean control blocks, bridges / opens / notches at a range of known sizes) + defect map CSV.
+- [ ] Fabricate and image at a university nanofab / microscope facility (several doses / dwell times, a range of pixel sizes).
+- [ ] Measure recall and false-alarm rate per defect type and size against the design, with true CAD this time.
+
+*Kill condition:* if the fabricated defects below the facility's resolution cannot be confirmed by an independent image (e.g. high-dose or tilted SEM), they are dropped from the recall denominator and reported as unconfirmed, not as misses or hits.
+
+### Rung 3: public SEM defect datasets via reference-die mode
+
+- [ ] Uses Phase 4's reference-die mode (clean neighbour image as the reference instead of CAD). Only after Phase 4's synthetic check passes its kill condition.
+
+### Rung 4: industry partner data
+
+- [ ] Only after Rungs 1 and 2 have results. Under NDA; same pre-registration rules.
+
+---
+
 ## Phase 4: Make real data possible (parallel)
 
 - [ ] **Reference-die mode:** clean die (or median of many dies) as the structural reference instead of CAD.
@@ -177,12 +208,13 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ## Suggested order
 
-1. Phase 1 (+ Module 2 test) and B3 simulator additions: both validation-only, both cheap.
-2. B2 fast Betti path: pure speed, zero verdict change, unblocks everything else.
-3. Phase 2 core rule.
-4. B1 agility comparison.
-5. B3 corrections.
-6. Phase 4 alongside, as data access allows.
+1. **Track C first.** Send the Rung 2 lab request (`docs/LAB_REQUEST.md`) on day one, because facility access and fabrication take weeks; run Rung 1 on public images while waiting.
+2. Phase 1 (+ Module 2 test) and B3 simulator additions: both validation-only, both cheap.
+3. B2 fast Betti path: pure speed, zero verdict change, unblocks everything else.
+4. Phase 2 core rule.
+5. B1 agility comparison.
+6. B3 corrections.
+7. Phase 4 alongside, as data access allows (it is also Track C Rung 3).
 
 ---
 
