@@ -1,3 +1,5 @@
+> **Early aspirational design notes; claims and numbers here are NOT measured results. See README for measured results.**
+
 # Comprehensive Technical Analysis of Existing Semiconductor Defect Inspection Systems
 **Document Type:** Reverse-Engineering & Disclosed Architecture Reference  
 **Scope:** Optical, Electron-Beam, Subsurface Metrology, and Production Machine Learning Pipelines  

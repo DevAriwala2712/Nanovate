@@ -1,3 +1,5 @@
+> **Early aspirational design notes; claims and numbers here are NOT measured results. See README for measured results.**
+
 # Defect Detection System Plan v4.0
 
 Oct 17, 2026 · @Boss

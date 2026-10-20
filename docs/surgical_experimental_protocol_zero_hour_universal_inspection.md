@@ -1,3 +1,5 @@
+> **Early aspirational design notes; claims and numbers here are NOT measured results. See README for measured results.**
+
 # Surgical Experimental Specification: The "Zero-Hour" Architecture-Agnostic Semiconductor Inspection Engine & Horizon Frontier R&D
 
 **Document Type:** Comprehensive Experimental R&D Blueprint, Unsolved Constraints Analysis, and Verification Protocol  
