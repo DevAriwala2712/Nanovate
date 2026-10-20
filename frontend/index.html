@@ -570,6 +570,8 @@
       <div class="panel-header"><span class="panel-title">Live Inspection</span></div>
       <div class="panel-body">
         <div class="live-form" id="live-form">
+          <div class="insp-field"><label>Presets</label><div><select class="value editable" id="live-preset" title="Selected illustrative examples, validation split (data/demo_presets.json). Not typical performance."><option value="">— none —</option></select></div></div>
+          <div class="metric-note" id="preset-note" style="padding:0 8px 4px">Presets: selected illustrative examples, validation split; not typical performance (see the Evidence tab).</div>
           <div class="insp-field"><label>Source</label><div><span class="value readonly">Simulated (testbed)</span></div></div>
           <div class="insp-field"><label>Family</label><div><select class="value editable" data-p="family"><option>manhattan</option><option>curvy</option><option>via</option></select></div></div>
           <div class="insp-field"><label>Defect kind</label><div><select class="value editable" data-p="kind"><option>nuisance</option><option selected>bridge</option><option>open</option><option>particle</option><option>notch</option><option>filament</option></select></div></div>
@@ -1340,7 +1342,9 @@
   }
   function showResult(res, t0) {
     live.res = res; live.lastError = null; live.hl = null; loadImgs(res);
-    setBanner(res.source_type === 'file' ? '' : 'info', res.warnings.length ? res.warnings.map(esc).join('<br>') : '');
+    const presetNote = live.preset && res.source_type !== 'file'
+      ? `Preset “${esc(live.preset.title)}”: a selected illustrative example, validation split; not typical performance.` : '';
+    setBanner(res.source_type === 'file' ? '' : 'info', [presetNote, ...res.warnings.map(esc)].filter(Boolean).join('<br>'));
     const d = res.d2d.available ? (res.d2d.single.flagged ? 'flagged' : 'not flagged') : 'n/a';
     log('INFO', 'Live', `${res.input_id} (${res.provenance}) seed ${res.seed}: verifier ${res.verifier.verdict}, CNN p=${res.cnn.prob.toFixed(3)}, D2D single ${d}; truth ${res.truth ? res.truth.label : 'none'} (${(performance.now() - t0).toFixed(0)} ms round trip)`);
   }
@@ -1473,6 +1477,35 @@
       (losses.length ? `<div class="ev-losses"><div class="chart-title">Where the verifier loses</div><ul>${losses.map(l => `<li>${l}</li>`).join('')}</ul></div>` : '') +
       block(`Day-0 use case, ${esc(E.pipeline_version)} (README and docs/USE_CASE.md)`, E.day0) + block(`Experiments 1–6 results, ${esc(E.pipeline_version)} (README)`, E.readme);
   }
+  // ── Presets: data/demo_presets.json (scripts/find_demo_presets.py), selected illustrative examples, validation split ──
+  live.preset = null; live.presets = [];
+  async function loadPresets() {
+    if (location.protocol === 'file:') return;
+    try {
+      const P = await (await fetch('data/demo_presets.json')).json();
+      live.presets = P.presets || [];
+      $('#live-preset').innerHTML = '<option value="">— none —</option>' +
+        live.presets.map((x, i) => `<option value="${i}">${esc(x.title)}</option>`).join('');
+      $('#preset-note').textContent = `Presets: selected illustrative examples, validation split (${P.pipeline_version} pipeline); not typical performance (see the Evidence tab).`;
+    } catch (_) { $('#preset-note').textContent = 'Presets unavailable (data/demo_presets.json not served).'; }
+  }
+  $('#live-preset').addEventListener('change', (e) => {
+    const x = live.presets[+e.target.value];
+    if (e.target.value === '' || !x) { live.preset = null; return; }
+    const set = (k, v) => { $(`#live-form [data-p="${k}"]`).value = v; };
+    const q = x.params;
+    set('family', q.family); set('kind', q.kind); set('dose', q.dose); set('ler_sigma', q.ler_sigma); set('grain', q.grain);
+    set('warp', q.warp); set('seed', q.seed); set('split', q.split);
+    live.applyingPreset = true;
+    const r = $('#live-form [data-p="shift_random"]'); r.checked = q.shift === null; r.dispatchEvent(new Event('change'));
+    live.applyingPreset = false;
+    if (q.shift) { set('shift_y', q.shift[0]); set('shift_x', q.shift[1]); }
+    live.preset = x; clearInvalid();
+    log('INFO', 'Live', `Preset loaded: ${x.title} (seed ${q.seed}, val split; selected illustrative example, not typical performance)`);
+    runLive();
+  });
+  $$('#live-form [data-p]').forEach(el => el.addEventListener('change', () => { if (live.applyingPreset) return; live.preset = null; $('#live-preset').value = ''; }));
+  loadPresets();
   $('#live-cancel').addEventListener('click', () => live.ctrl && live.ctrl.abort());
   $('#live-form [data-p="shift_random"]').addEventListener('change', (e) => {
     ['shift_y', 'shift_x'].forEach(k => $(`#live-form [data-p="${k}"]`).disabled = e.target.checked);
