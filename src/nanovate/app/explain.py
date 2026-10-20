@@ -78,6 +78,65 @@ def explain_verifier(verdict: str, r: dict, recovered_shift=None, applied_shift=
     return out
 
 
+def event_delta(r: dict) -> tuple[int, int]:
+    """(Δβ₀, Δβ₁) implied by the v3 located events, for the display locator only: merges/bridges and new holes vs
+    splits, particles and lost holes. The v3 verdict itself is decided from the events, not from this sum."""
+    ev = r["events"]
+    n_merge = sum(e["kind"] in ("bridge", "merge") for e in ev["bridge"])
+    n_lost = sum(e["kind"] == "lost_hole" for e in ev["open"])
+    return (len(ev["open"]) - n_lost) - n_merge, (len(ev["bridge"]) - n_merge) - n_lost
+
+
+def explain_verifier_v3(verdict: str, r: dict, recovered_shift=None, applied_shift=None) -> list[str]:
+    """Sentences for a v3 verdict (located-event rule), built only from its reason fields."""
+    ev = r["events"]
+    rc = r.get("rule_cfg") or {}
+    bridges = [e for e in ev["bridge"] if e["kind"] == "bridge"]
+    new_holes = [e for e in ev["bridge"] if e["kind"] != "bridge"]
+    splits = [e for e in ev["open"] if e["kind"] == "split"]
+    parts = [e for e in ev["open"] if e["kind"] == "particle"]
+    lost = [e for e in ev["open"] if e["kind"] == "lost_hole"]
+    out = []
+    for b in bridges[:3]:
+        out.append(f"Merge event: between CAD conductors {b['seeds'][0]} and {b['seeds'][1]} the observed merge level {_n(b['s'])} "
+                   f"exceeds the template-expected level {_n(b['e'])} by at least the margin {_n(rc.get('m_merge'), 2)} → bridge.")
+    if len(bridges) > 3:
+        out.append(f"… and {len(bridges) - 3} more merge event(s).")
+    if new_holes:
+        out.append(f"{len(new_holes)} new enclosed dielectric hole(s) (persistence lifetime ≥ τ = {r['tau']:g}): conductors joined around a gap → bridge.")
+    if splits:
+        out.append(f"{len(splits)} split event(s): a CAD conductor breaks into separate pieces (lifetime ≥ τ = {r['tau']:g}) → open.")
+    if parts:
+        out.append(f"{len(parts)} isolated conductive blob(s) in the dielectric (lifetime ≥ τ = {r['tau']:g}) → particle.")
+    if lost:
+        out.append(f"{len(lost)} CAD hole(s) lost: a conductor loop is broken → open.")
+    if bridges or new_holes or splits or parts or lost:
+        out.append(f"Verdict {verdict} comes from the located events (v3 rule: a seen bridge is never cancelled by an open); "
+                   "the near-miss values are not used for killers.")
+    else:
+        out.append(f"No located merge, split, particle or hole event (v3 rule, τ = {r['tau']:g}): topology matches CAD.")
+        conds = [("bottleneck distance", r.get("bottleneck_max"), r.get("d_star"), "d*", 3),
+                 ("max SDF energy", r.get("max_sdf_energy"), r.get("e_star"), "e*", 2),
+                 ("peak-z", r.get("peak_z"), r.get("z_star"), "z*", 1)]
+        conds = [c for c in conds if c[2] is not None]
+        parts_t = [f"{name} {_n(v, nd)} {'≥' if _ge(v, t) else '<'} {sym} {_n(t, nd)}" for name, v, t, sym, nd in conds]
+        if conds and all(_ge(v, t) for _, v, t, _, _ in conds):
+            out.append("Near-miss rule: " + ", ".join(parts_t) + " → all hold → NEAR_MISS "
+                       "(the image is close to changing topology near the CAD edges: a pinch or a filament).")
+        else:
+            failed = [p for p, c in zip(parts_t, conds) if not _ge(c[1], c[2])]
+            out.append("Near-miss rule: " + ", ".join(parts_t) + f" → {'; '.join(failed) or 'off'} fails → NUISANCE "
+                       "(roughness, grain or noise without a topology change).")
+    if r.get("singleton"):
+        out.append("Singleton path: no same-layout stack was available, so Module 2 (low-rank denoising) was not used.")
+    if recovered_shift is not None:
+        s = f"Module 3 recovered an acquisition shift of ({recovered_shift[0]:+.2f}, {recovered_shift[1]:+.2f}) px (row, col)"
+        if applied_shift is not None:
+            s += f"; the simulator applied ({applied_shift[0]:+.2f}, {applied_shift[1]:+.2f}) px"
+        out.append(s + ".")
+    return out
+
+
 def explain_cnn(c: dict) -> list[str]:
     rel = "≥" if c["flagged"] else "<"
     out = [f"CNN: killer probability {_n(c['prob'])} {rel} threshold {_n(c['threshold'])} (chosen on Manhattan val) → "
@@ -125,7 +184,8 @@ def explain(resp: dict) -> dict:
     if loc.get("energy_peak"):
         p = loc["energy_peak"]
         loc_text.append(f"The SDF tension energy peaks at (row {p['row']}, col {p['col']}) with {_n(p['value'], 2)}.")
-    return {"verifier": explain_verifier(v["verdict"], v["reason"], v.get("recovered_shift"), applied),
+    fn = explain_verifier_v3 if v["reason"].get("rule") == "v3_events" else explain_verifier
+    return {"verifier": fn(v["verdict"], v["reason"], v.get("recovered_shift"), applied),
             "cnn": explain_cnn(resp["cnn"]), "d2d": explain_d2d(resp["d2d"]), "truth": explain_truth(resp.get("truth")),
             "locator": loc_text}
 

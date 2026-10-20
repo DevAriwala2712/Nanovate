@@ -29,7 +29,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ..config import TestbedCfg
 from .engine import Engine, finite
 from .evidence import evidence
-from .explain import explain, locate
+from .explain import event_delta, explain, locate
 from .report import build_html, build_json
 from .schemas import API_VERSION, HealthResponse, ReportRequest, SimulateParams, SimulateResponse, VerifyRequest, VerifyResponse
 from .sources import DOSE_GRID, FileSource, InputError, InspectionInput, SimulatedSource
@@ -132,7 +132,8 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
 
     def envelope(request: Request) -> dict:
         e = eng()
-        return {"api_version": API_VERSION, "request_id": request.state.request_id, "commit": e.commit, "config_hash": e.config_hash}
+        return {"api_version": API_VERSION, "request_id": request.state.request_id, "commit": e.commit, "config_hash": e.config_hash,
+                "pipeline_version": e.version}
 
     def truth_block(inp: InspectionInput) -> dict | None:
         t = inp.truth
@@ -192,7 +193,7 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
                                   "d2d_single": d2d.get("single", {}).get("ms"), "d2d_double": d2d.get("double", {}).get("ms")}}
         if cal.get("replaced_previous"):
             runtime["calibration_replaced_previous"] = True
-        verifier = {k: v[k] for k in ("verdict", "singleton", "aligner_shift", "recovered_shift", "timings_ms")}
+        verifier = {k: v[k] for k in ("pipeline_version", "verdict", "singleton", "aligner_shift", "recovered_shift", "timings_ms")}
         verifier["reason"] = {k: val for k, val in v["reason"].items() if k != "field_meta"}
         if truth is None:
             agreement = {m: "no ground truth" for m in ("verifier", "cnn", "d2d_single", "d2d_double")}
@@ -215,7 +216,8 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
                "verifier": finite(verifier), "cnn": finite({k: x for k, x in cnn.items()}), "d2d": finite(d2d), "truth": truth,
                "agreement": agreement, "calibration": finite({"layer_id": cal["layer_id"], **res["levels"]}),
                "images": images_block(inp), "overlays": overlays, "runtime": finite(runtime)}
-        out["locator"] = finite(locate(field, inp.cad, v["reason"]["delta_betti"], emap, e.win))
+        d_loc = event_delta(verifier["reason"]) if verifier["reason"].get("rule") == "v3_events" else v["reason"]["delta_betti"]
+        out["locator"] = finite(locate(field, inp.cad, d_loc, emap, e.win))
         out["explanation"] = explain(out)
         if include_arrays:
             out["arrays"] = {"image": b64_array(inp.image), "cad": b64_array(inp.cad), "field": b64_array(field), "sdf_energy": b64_array(emap)}
@@ -271,7 +273,7 @@ def create_app(engine: Engine | None = None, frontend: str | Path | None = "fron
 
     @app.get("/api/v1/results")
     def results(request: Request):
-        return {**envelope(request), **evidence()}
+        return {**envelope(request), **evidence(version=eng().version)}
 
     @app.post("/api/v1/report")
     def report_(req: ReportRequest, request: Request):

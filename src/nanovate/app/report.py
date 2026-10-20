@@ -55,9 +55,10 @@ def build_html(rep: dict, index: Path = Path("frontend/index.html")) -> str:
     else:
         d2d = d["why"]
     ag = rep["agreement"]
-    verdicts = [("Verifier (topology, no labels)", v["verdict"], ag["verifier"]),
-                ("CNN (Manhattan-trained)", f'{"KILLER" if c["flagged"] else "NOT KILLER"} (p = {c["prob"]:.3f}, threshold {c["threshold"]:.3f})', ag["cnn"]),
-                ("Die-to-die", d2d, ag.get("d2d_single", "not available"))]
+    pv = rep.get("pipeline_version", "unknown")
+    verdicts = [(f"Verifier (topology, no labels) [pipeline {pv}]", v["verdict"], ag["verifier"]),
+                (f"CNN (Manhattan-trained) [pipeline {pv}]", f'{"KILLER" if c["flagged"] else "NOT KILLER"} (p = {c["prob"]:.3f}, threshold {c["threshold"]:.3f})', ag["cnn"]),
+                (f"Die-to-die [pipeline {pv}]", d2d, ag.get("d2d_single", "not available"))]
     vt = "<table><tr><th>Method</th><th>Verdict</th><th>vs ground truth</th></tr>" + "".join(
         f"<tr><td>{e(m)}</td><td>{e(x)}</td><td>{e(a)}</td></tr>" for m, x, a in verdicts) + "</table>"
     names = {"verifier": "Verifier", "locator": "Location", "cnn": "CNN", "d2d": "Die-to-die", "truth": "Ground truth"}
@@ -66,7 +67,7 @@ def build_html(rep: dict, index: Path = Path("frontend/index.html")) -> str:
     reason = _t([(k, val) for k, val in v["reason"].items()])
     truth = _t([("label", t["label"]), ("kind", t["kind"]), ("delta beta", t["d_beta"]), ("source", t["source"])]) if t else \
         "<p>No ground truth exists for this input; no verdict is marked correct or wrong.</p>"
-    repro = _t([("input id", rep["input_id"]), ("seed", rep["seed"]), ("commit", rep["commit"]), ("config hash", rep["config_hash"]),
+    repro = _t([("pipeline version", pv), ("input id", rep["input_id"]), ("seed", rep["seed"]), ("commit", rep["commit"]), ("config hash", rep["config_hash"]),
                 ("api version", rep["api_version"]), ("calibration", rep["calibration"]), ("params", rep["params"])])
     timings = _t([(k, val) for k, val in rep["runtime"].items()])
     warn = "".join(f'<p class="warn">{e(w)}</p>' for w in rep["warnings"])
@@ -80,12 +81,13 @@ h3 {{ font-size: 12px; color: var(--text-bright); margin: 10px 0 2px; }}
 table {{ border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }} th, td {{ border: 1px solid var(--border); padding: 3px 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }}
 th {{ background: var(--bg-header); color: var(--text-dim); font-weight: 600; }}
 .label {{ display: inline-block; background: {"var(--warn)" if file_like else "var(--danger)"}; color: #fff; font-weight: 600; font-size: 11px; padding: 2px 8px; }}
+.pv {{ display: inline-block; background: var(--accent-dim); color: #fff; font: 600 11px var(--font-mono); padding: 1px 6px; vertical-align: middle; }}
 .warn {{ color: var(--warn); margin: 4px 0; }} .dim {{ color: var(--text-dim); }}
 .figs {{ display: flex; flex-wrap: wrap; gap: 12px; }} figure {{ margin: 0; position: relative; }} figure img {{ width: 220px; height: 220px; image-rendering: pixelated; display: block; border: 1px solid var(--border); }}
 figcaption {{ font-size: 11px; color: var(--text-dim); margin-top: 3px; }}
 .badge {{ position: absolute; top: 1px; left: 1px; background: var(--danger); color: #fff; font: 600 10px var(--font-mono); padding: 1px 5px; }} .badge.file {{ background: var(--warn); }}
 </style></head><body>
-<h1>Nanovate analysis report</h1>
+<h1>Nanovate analysis report <span class="pv">pipeline {e(pv)}</span></h1>
 <div class="label">{e(rep["label"])}</div>
 <p class="dim">{e(rep["disclaimer"])}</p>
 {warn}

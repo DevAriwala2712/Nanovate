@@ -25,7 +25,7 @@ def test_simulate_twice_is_byte_identical(client):
 def test_fresh_engine_gives_the_same_answer(client, rule_cache):
     """No hidden state: a new engine (cold calibration cache, rules from disk) returns the same response."""
     a = client.post("/api/v1/verify", json=REQ).json()
-    b = TestClient(create_app(Engine(rule_cache=rule_cache), frontend=None)).post("/api/v1/verify", json=REQ).json()
+    b = TestClient(create_app(Engine(rule_cache=rule_cache, version="v2"), frontend=None)).post("/api/v1/verify", json=REQ).json()
     assert strip_timings(a) == strip_timings(b)
 
 

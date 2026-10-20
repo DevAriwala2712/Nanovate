@@ -245,8 +245,9 @@
     assert(P.qa('#evidence-view table').length === nTables, `expected ${nTables} tables, got ${P.qa('#evidence-view table').length}`);
     const txt = P.q('#evidence-view').textContent;
     assert(txt.includes('synthetic data') && txt.includes('Where the verifier loses'), 'synthetic label or losses missing');
-    assert(txt.includes(`${ev.losses.cnn_speed_ratio.value.toFixed(0)}× faster`) && txt.includes('results/v2/exp6/latency.csv'), 'speed ratio or its source missing');
-    assert(txt.includes('no day-0 advantage') && txt.includes('Manhattan'), 'curvy / Manhattan loss missing');
+    assert(txt.includes(`${ev.losses.cnn_speed_ratio.value.toFixed(0)}× faster`) && txt.includes(ev.root + '/exp6/latency.csv'), 'speed ratio or its source missing');
+    assert(txt.includes('Manhattan'), 'Manhattan loss missing');
+    if (ev.losses.breakeven) assert(txt.includes('no day-0 advantage'), 'curvy break-even loss missing');   // break-even exists for v2 only
     const firstCell = ev.day0.sections.find(s => s.headers.length).rows[0][1];
     assert(txt.includes(firstCell), 'a table cell from /results is not shown verbatim');
     P.q('[data-mode="grid"]').click(); await sleep(30);

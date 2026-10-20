@@ -49,6 +49,7 @@ class Envelope(BaseModel):
     request_id: str
     commit: str
     config_hash: str
+    pipeline_version: str = Field(description="verifier pipeline the server runs: v2 | v3 (python -m nanovate.app --pipeline-version)")
 
 
 class HealthResponse(Envelope):

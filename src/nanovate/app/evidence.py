@@ -3,7 +3,8 @@
 The app never formats a result number itself: it calls ``render_tables`` / ``render_day0`` (the functions that
 write the README blocks), records which files they read, and splits their markdown into sections. The few facts
 the Evidence tab states in words (where the verifier loses) are read from the same CSVs, with their source rows.
-Synthetic data throughout.
+Only the selected pipeline version's tables are returned: v2 -> results/v2 (README "Results (v2)" and v2 day-0
+blocks); v3 -> results/v3 (``experiments.v3_run.render_v3`` and the v3 day-0 block). Synthetic data throughout.
 """
 from __future__ import annotations
 
@@ -108,18 +109,34 @@ def _losses(root: Path) -> dict:
     return out
 
 
-def evidence(repo: Path = Path(".")) -> dict:
-    root = results_root(ExpCfg.full())
+def renderers(version: str):
+    """(results tables renderer, README markers, day-0 renderer, day-0 markers) for one pipeline version."""
+    if version == "v3":
+        from experiments.v3_run import render_v3
+        return (render_v3, (report.V3_START, report.V3_END),
+                lambda r: report.render_day0(r, "day0", "v3"), (report.DAY0_V3_START, report.DAY0_V3_END))
+    if version == "v2":
+        return (report.render_tables, (report.START, report.END),
+                lambda r: report.render_day0(r, version="v2"), (report.DAY0_START, report.DAY0_END))
+    raise ValueError(f"no evidence tables for pipeline version {version!r}")
+
+
+def evidence(repo: Path = Path("."), version: str = "v3") -> dict:
+    root = results_root(ExpCfg.full(version))
     readme = repo / "README.md"
-    tables_md, tables_src = _render_with_sources(report.render_tables, root)
-    day0_md, day0_src = _render_with_sources(report.render_day0, root)
+    tables_fn, tables_markers, day0_fn, day0_markers = renderers(version)
+    tables_md, tables_src = _render_with_sources(tables_fn, root)
+    day0_md, day0_src = _render_with_sources(day0_fn, root)
+    if version == "v3":   # render_v3 reads these directly (not through report._read)
+        tables_src += [str(root / f) for f in ("variants.csv", "phase2_targets.csv", "detection_limit.csv", "run_config.json") if (root / f).exists()]
     dec = root / "calib" / "decisions.json"
     return {
         "synthetic": True,
+        "pipeline_version": version,
         "root": str(root),
         "readme": {"markdown": tables_md, "sections": _parse(tables_md), "sources": tables_src + ([str(dec)] if dec.exists() else []),
-                   "in_sync_with_readme": _readme_block(readme, (report.START, report.END)) == tables_md.strip()},
+                   "in_sync_with_readme": _readme_block(readme, tables_markers) == tables_md.strip()},
         "day0": {"markdown": day0_md, "sections": _parse(day0_md), "sources": day0_src,
-                 "in_sync_with_readme": _readme_block(readme, (report.DAY0_START, report.DAY0_END)) == day0_md.strip()},
+                 "in_sync_with_readme": _readme_block(readme, day0_markers) == day0_md.strip()},
         "losses": _losses(root),
     }

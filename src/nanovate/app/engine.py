@@ -1,10 +1,16 @@
 """Analysis engine of the demonstrator app: calls the research core exactly as the experiments do.
 
-The frozen artefacts come from ``experiments.harness.Context(ExpCfg.full())`` (the object every v2 experiment
-uses): the verifier ``PipelineCfg`` from results/v2/calib/decisions.json, the CNN weights m6_cnn/cnn.pt with the
-probability threshold from results/m6_baselines/rules.json, and the per-dose die-to-die rules fitted on
-Manhattan val (seed 0). The app never refits a threshold differently and never changes these.
-Per input: Module-1 calibration (cached per layer id) -> ``verify_patch`` -> CNN ``predict_proba`` ->
+Two pipeline versions (``Engine(version=...)``, default v3; ``python -m nanovate.app --pipeline-version``):
+
+* **v2**: artefacts from ``experiments.harness.Context(ExpCfg.full("v2"))`` (the object every v2 experiment uses):
+  the verifier ``PipelineCfg`` from results/v2/calib/decisions.json; verdict by ``pipeline.verify_patch``.
+* **v3**: artefacts from ``experiments.v3_harness.V3Context(ExpCfg.full("v3"))`` (the v3 experiments' object): the
+  ``PipelineCfg`` and frozen primary ``EventRuleCfg`` from results/v3/calib/decisions.json; verdict by
+  ``pipeline_v3.verify_patch_v3`` (the same evidence + ``decide`` the v3 harness runs).
+
+Both share the CNN weights m6_cnn/cnn.pt with the probability threshold from results/m6_baselines/rules.json and the
+per-dose die-to-die rules fitted on Manhattan val (seed 0). The app never refits a threshold differently and never
+changes these. Per input: Module-1 calibration (cached per layer id) -> verifier -> CNN ``predict_proba`` ->
 ``d2d_score`` / ``d2d_flag``. Overlays (conductor field, SDF energy) are recomputed with the same calls the
 pipeline and ``nanovate.demo.walk_through`` use; they are for display and never feed a verdict.
 """
@@ -31,10 +37,15 @@ from ..modules.align_sdf import align_to_template, energy_map
 from ..modules.calibration import Calibration, calibrate, features
 from ..modules.fields import build_field
 from ..pipeline import verify_patch
+from ..pipeline_v3 import verify_patch_v3
 from ..testbed.dataset import window
 from .sources import DOSE_GRID, InputError, InspectionInput
 
-REPO_FILES = ("results/v2/calib/decisions.json", "results/m6_baselines/rules.json", CNN_PATH, "experiments/harness.py")
+PIPELINE_VERSIONS = ("v2", "v3")
+DEFAULT_VERSION = "v3"
+DECISIONS = {"v2": "results/v2/calib/decisions.json", "v3": "results/v3/calib/decisions.json"}
+REPO_FILES = (DECISIONS["v2"], DECISIONS["v3"], "results/v3/calib/secondary.json", "results/m6_baselines/rules.json", CNN_PATH,
+              "experiments/harness.py")
 
 
 def check_repo_root(root: Path = Path(".")) -> None:
@@ -86,18 +97,32 @@ def code_fingerprint() -> str:
 class Engine:
     """Holds the frozen methods, the caches and one analysis lock (GUDHI / torch, honest timings)."""
 
-    def __init__(self, rule_cache: str | Path | None = "results/app_cache/d2d_rules.json", max_inputs: int = 64):
+    def __init__(self, rule_cache: str | Path | None = "results/app_cache/d2d_rules.json", max_inputs: int = 64,
+                 version: str = DEFAULT_VERSION):
         check_repo_root()
-        self.exp = ExpCfg.full()
-        self.ctx = Context(self.exp)
+        if version not in PIPELINE_VERSIONS:
+            raise ValueError(f"pipeline version must be one of {PIPELINE_VERSIONS}, got {version!r}")
+        self.version = version
+        self.exp = ExpCfg.full(version)
+        if version == "v3":
+            from experiments.v3_harness import V3Context
+            self.ctx = V3Context(self.exp)
+            self.rc = self.ctx.rc
+        else:
+            self.ctx = Context(self.exp)
+            self.rc = None
         self.pc = self.ctx.pc
         self.tcfg = TestbedCfg()
         self.win = window(self.tcfg)
         self.commit = git_commit()
         self.cnn_sha256 = _sha256_file(CNN_PATH)
         self.config = {
+            "pipeline_version": version,
             "pipeline_cfg": finite(self.pc.to_dict()),
-            "pipeline_cfg_source": "results/v2/calib/decisions.json",
+            "pipeline_cfg_source": DECISIONS[version],
+            **({"event_rule_cfg": finite(self.rc.to_dict()), "event_rule_cfg_source": DECISIONS[version],
+                "verifier_call": "nanovate.pipeline_v3.verify_patch_v3"} if self.rc is not None else
+               {"verifier_call": "nanovate.pipeline.verify_patch"}),
             "testbed_cfg": dataclasses.asdict(self.tcfg),
             "cnn": {"weights": CNN_PATH, "sha256": self.cnn_sha256, "threshold": self.ctx.cnn_thr,
                     "threshold_source": "results/m6_baselines/rules.json"},
@@ -189,8 +214,8 @@ class Engine:
             cal, cal_info = self.calibration(inp)
             img, cad, pc, win = inp.image, inp.cad, self.pc, self.win
 
-            r = verify_patch(img, cad, cal, win, pc)
-            verifier = {"verdict": r.verdict, "reason": r.reason, "singleton": r.singleton,
+            r = verify_patch_v3(img, cad, cal, win, pc, self.rc) if self.rc is not None else verify_patch(img, cad, cal, win, pc)
+            verifier = {"pipeline_version": self.version, "verdict": r.verdict, "reason": r.reason, "singleton": r.singleton,
                         "aligner_shift": list(r.shift), "recovered_shift": [-r.shift[0], -r.shift[1]], "timings_ms": dict(r.timings_ms)}
 
             t0 = time.perf_counter()

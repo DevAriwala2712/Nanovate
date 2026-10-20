@@ -91,7 +91,7 @@ def test_verify_equals_experiment_harness_rows(client, engine, rule_cache):
     ctx = Context(ExpCfg.full())
     fresh = ctx.d2d_rules(50.0)
     assert fresh == engine.ctx.d2d_rules(50.0)
-    reloaded = Engine(rule_cache=rule_cache)
+    reloaded = Engine(rule_cache=rule_cache, version="v2")
     assert 50.0 in reloaded.rules_cached() and reloaded.ctx._rules[50.0] == fresh
     tcfg = with_dose(TestbedCfg(), 50.0)
     for kind in KINDS:

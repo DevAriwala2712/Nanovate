@@ -39,3 +39,10 @@ def test_frontend_is_served_with_live_mode_and_no_stale_text(engine):
         assert stale not in html, stale
     assert c.get("/data/run.js").text.startswith("window.NANOVATE_RUN")
     assert c.get("/api/v1/health").json()["cnn_loaded"] is True   # API routes still win over the static mount
+
+
+def test_ui_shows_the_pipeline_version_badge():
+    html = open("frontend/index.html").read()
+    assert 'id="pipe-badge"' in html and "health.pipeline_version" in html
+    assert html.count("${pipeBadge(r)}") == 3          # one badge in each verdict card
+    assert "E.pipeline_version" in html                 # Evidence tab names the version it shows

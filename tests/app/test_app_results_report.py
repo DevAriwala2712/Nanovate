@@ -10,13 +10,15 @@ pytest.importorskip("fastapi")
 
 from conftest import strip_timings  # noqa: E402
 
-from experiments import report  # noqa: E402
+from experiments import report  # noqa: E402,F401
+from nanovate.app.evidence import renderers  # noqa: E402
 
 
 def test_results_tables_come_from_the_report_generator(client):
     r = client.get("/api/v1/results").json()
-    assert r["synthetic"] is True and r["root"] == "results/v2"
-    for key, fn in (("readme", report.render_tables), ("day0", report.render_day0)):
+    assert r["synthetic"] is True and r["root"] == "results/v2" and r["pipeline_version"] == "v2"
+    tables_fn, _, day0_fn, _ = renderers("v2")
+    for key, fn in (("readme", tables_fn), ("day0", day0_fn)):
         block = r[key]
         assert block["markdown"] == fn(Path(r["root"]))                  # nothing reformatted by the app
         assert block["in_sync_with_readme"] is True                      # README shows exactly these tables
