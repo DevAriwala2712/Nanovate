@@ -692,7 +692,7 @@
 <div id="statusbar">
   <div class="stat"><span class="label">Seed</span> <span class="val" id="st-seed">—</span></div>
   <div class="stat"><span class="label">Split</span> <span class="val" id="st-split">—</span></div>
-  <div class="stat"><span class="label">Module 4</span> <span class="val" id="st-m4">—</span></div>
+  <div class="stat"><span class="label">Grid export (v2)</span> <span class="val" id="st-m4">—</span></div>
   <div class="stat"><span class="label">Samples</span> <span class="val" id="st-n">—</span></div>
   <div class="stat"><span class="label">Zoom</span> <span class="val" id="st-zoom">100%</span></div>
   <div class="stat"><span class="label">API</span> <span class="val pipe-state idle" id="st-api">checking…</span></div>
@@ -753,7 +753,7 @@
     <div class="modal-header">About Nanovate Review <button class="modal-close" data-close="modal-about">✕</button></div>
     <div class="modal-body" style="font-size:12px; line-height:1.6">
       <p><strong>Nanovate Review</strong> — viewer for the training-free SEM topology verifier.</p>
-      <p style="color:var(--text-dim); margin-top:8px">All patches are synthetic testbed samples; ground-truth labels come from exact topology of the wafer W vs CAD. Verdicts come from the full verifier (Modules 1, 3, 4) with the config frozen on Manhattan val (results/v2/calib/decisions.json). Nanovate analyses one patch at a time; it does not scan wafers or control any tool.</p>
+      <p style="color:var(--text-dim); margin-top:8px">All patches are synthetic testbed samples; ground-truth labels come from exact topology of the wafer W vs CAD. The static Sample Grid was exported with the full verifier (Modules 1, 3, 4) and the v2 config frozen on Manhattan val (results/v2/calib/decisions.json). Live mode runs the pipeline the app server was started with (v3 by default, <code>--pipeline-version v2|v3</code>; shown as the badge in the title bar and on every verdict card). Nanovate analyses one patch at a time; it does not scan wafers or control any tool. Nothing here is validated on real SEM images.</p>
       <pre id="about-cfg" style="margin-top:8px; font-family:var(--font-mono); font-size:11px; user-select:text; white-space:pre-wrap"></pre>
     </div>
     <div class="modal-footer"><button class="btn primary" data-close="modal-about">OK</button></div>
@@ -975,7 +975,7 @@
     const row = (n, ms, note) => `<div class="pipe-stage" style="grid-template-columns:240px 110px 1fr"><span class="stage-name">${n}</span><span class="dur">${ms.toFixed(1)} ms</span><span class="counts">${note}</span></div>`;
     $('#pipe-stages').innerHTML =
       row('Module 3: alignment + SDF energy', t - f, `levels: ${RUN.module4.levelsSource}; ${RUN.module4.sdfEnergy}`) +
-      row('Module 4: field + persistence + verdict', f, `field ${RUN.module4.field}; τ = ${RUN.module4.tau}; ` + (RUN.module4.dStar == null ? 'd*, e* unset → near-miss rule off' : `near-miss rule on (d* ${(+RUN.module4.dStar).toFixed(3)}, e* ${(+RUN.module4.eStar).toFixed(2)})`)) +
+      row('Module 4: field + persistence + verdict', f, `field ${RUN.module4.field}; τ = ${RUN.module4.tau}; ` + (RUN.module4.dStar == null ? 'd*, e* unset → near-miss rule off' : `near-miss rule on (d* ${(+RUN.module4.dStar).toFixed(3)}, e* ${(+RUN.module4.eStar).toFixed(2)}` + (RUN.module4.zStar === undefined ? ', and peak-z ≥ z*: value not recorded in this export, see results/v2/calib/decisions.json' : RUN.module4.zStar === null ? '' : `, z* ${(+RUN.module4.zStar).toFixed(2)}`) + ')')) +
       row('Total per patch (mean)', t, `n = ${S.length}`);
   }
 
@@ -1720,10 +1720,10 @@
 
   $('#tab-grid').textContent = `Sample Grid · ${RUN.split} split, synthetic`;
   renderExplorer(); renderLayers(); renderTable(); renderInspector(); renderMetrics(); renderPipeline(); resize();
-  checkHealth().then(ok => log(ok ? 'INFO' : 'WARN', 'Live', ok ? `App server online (config ${live.health.config_hash}, commit ${live.health.commit.slice(0, 12)}, CNN loaded: ${live.health.cnn_loaded})` : 'App server not reachable: Live mode is unavailable, the static grid still works'));
+  checkHealth().then(ok => log(ok ? 'INFO' : 'WARN', 'Live', ok ? `App server online (pipeline ${live.health.pipeline_version}, config ${live.health.config_hash}, commit ${live.health.commit.slice(0, 12)}, CNN loaded: ${live.health.cnn_loaded})` : 'App server not reachable: Live mode is unavailable, the static grid still works'));
   window.addEventListener('resize', resize);
   log('INFO', 'System', `Loaded ${S.length} synthetic samples (seed ${RUN.seed}, split ${RUN.split})`);
-  log('INFO', 'Pipeline', `Verifier (frozen v2 config): field=${m4.field}, τ=${m4.tau}; levels from ${m4.levelsSource}; SDF energy ${m4.sdfEnergy}`);
+  log('INFO', 'Pipeline', `Static grid export, verifier (frozen v2 config): field=${m4.field}, τ=${m4.tau}; levels from ${m4.levelsSource}; SDF energy ${m4.sdfEnergy}`);
   const ok = S.filter(d => d.correct).length;
   log(ok / S.length < 0.5 ? 'WARN' : 'INFO', 'Pipeline', `Verdict class matches truth for ${ok}/${S.length} samples (frozen v2 config)`);
 })();

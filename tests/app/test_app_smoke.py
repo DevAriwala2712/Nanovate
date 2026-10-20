@@ -35,7 +35,12 @@ def test_frontend_is_served_with_live_mode_and_no_stale_text(engine):
     c = TestClient(create_app(engine, frontend="frontend"))
     html = c.get("/").text
     assert 'data-mode="live"' in html and 'id="live-cards"' in html and "validation split, synthetic" in html
-    for stale in ("are not built yet", "Module 3 not built", "Module 4 only", "untuned Module 4", "--tau 0.45"):
+    for stale in ("are not built yet", "Module 3 not built", "Module 4 only", "untuned Module 4", "--tau 0.45",
+                  "Verdicts come from the full verifier (Modules 1, 3, 4) with the config frozen",   # Live runs v3 by default now
+                  '<span class="label">Module 4</span>'):                                            # the status-bar config is the v2 grid export's
+        assert stale not in html, stale
+    assert "Live mode runs the pipeline the app server was started with" in html and "Grid export (v2)" in html
+    for stale in ():
         assert stale not in html, stale
     assert c.get("/data/run.js").text.startswith("window.NANOVATE_RUN")
     assert c.get("/api/v1/health").json()["cnn_loaded"] is True   # API routes still win over the static mount
