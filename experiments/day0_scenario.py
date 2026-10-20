@@ -7,7 +7,10 @@ stated in config.json. Killers split equally into bridge / open / particle; non-
 each prevalence it reports killers caught / flagged as near-miss / missed, harmless sites sent as killers,
 near-misses flagged and sites sent to an engineer, with 95% CIs from a bootstrap that resamples samples within
 each kind. Writes results/v2/day0_scenario/{scenario.csv, config.json}.
-Usage: python -m experiments.day0_scenario [--quick]
+
+``--version v3`` applies the same projection (same site mix, prevalences, bootstrap seed and n_boot) to the v3
+fresh-test Exp 3 samples (``results/v3/exp3/samples.csv``, frozen v3 rule) and writes results/v3/day0/.
+Usage: python -m experiments.day0_scenario [--quick] [--version v2|v3]
 """
 from __future__ import annotations
 
@@ -20,6 +23,8 @@ from experiments.common import ExpCfg, write_results
 from experiments.select_config import results_root
 
 SAMPLES_CSV = "results/v2/exp3/samples.csv"
+SAMPLES_CSV_V3 = "results/v3/exp3/samples.csv"
+OUT_DIR = {"v2": "day0_scenario", "v3": "day0"}   # results/<version>/<dir>/scenario.csv
 KILLER_KINDS = ("bridge", "open", "particle")
 SAFE_MIX = {"nuisance": 0.90, "notch": 0.05, "filament": 0.05}
 NEAR_MISS_KINDS = ("notch", "filament")
@@ -59,7 +64,9 @@ def _rates(df: pd.DataFrame, flag: np.ndarray, nm: np.ndarray) -> dict[str, dict
             "nm": {k: float(nm[kinds == k].mean()) for k in KILLER_KINDS + tuple(SAFE_MIX)}}
 
 
-def run(cfg: ExpCfg, samples_csv: str = SAMPLES_CSV, family: str = "via") -> pd.DataFrame:
+def run(cfg: ExpCfg, samples_csv: str | None = None, family: str = "via") -> pd.DataFrame:
+    """Project the review queue for ``cfg.version`` (v2 default inputs/outputs unchanged; v3 -> results/v3/day0/)."""
+    samples_csv = samples_csv or (SAMPLES_CSV_V3 if cfg.version == "v3" else SAMPLES_CSV)
     df = pd.read_csv(samples_csv)
     df = df[(df.family == family) & (df.dose == cfg.nominal_dose)].reset_index(drop=True)
     rng = np.random.default_rng(cfg.seed)
@@ -78,7 +85,7 @@ def run(cfg: ExpCfg, samples_csv: str = SAMPLES_CSV, family: str = "via") -> pd.
                 rows.append(dict(method=m, prevalence=p, metric=metric, mean=point[metric], ci_lo=float(np.percentile(v, 2.5)),
                                  ci_hi=float(np.percentile(v, 97.5)), n_samples=len(df), n_sites=N_SITES))
     tab = pd.DataFrame(rows)
-    write_results(results_root(cfg) / "day0_scenario", "scenario", tab,
+    write_results(results_root(cfg) / OUT_DIR.get(cfg.version, "day0_scenario"), "scenario", tab,
                   {"exp_cfg": cfg.to_dict(), "samples_csv": samples_csv, "family": family, "dose": cfg.nominal_dose,
                    "killer_split": "equal bridge/open/particle", "safe_mix": SAFE_MIX, "prevalences": PREVALENCES, "n_sites": N_SITES,
                    "data": "projection from synthetic rates (not a measurement)"})
@@ -86,5 +93,6 @@ def run(cfg: ExpCfg, samples_csv: str = SAMPLES_CSV, family: str = "via") -> pd.
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--quick", action="store_true"); a = ap.parse_args()
-    run(ExpCfg.quick() if a.quick else ExpCfg.full())
+    ap = argparse.ArgumentParser(); ap.add_argument("--quick", action="store_true"); ap.add_argument("--version", default="v2", choices=("v2", "v3"))
+    a = ap.parse_args()
+    run(ExpCfg.quick(a.version) if a.quick else ExpCfg.full(a.version))

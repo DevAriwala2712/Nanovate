@@ -33,10 +33,57 @@ generated from the result CSVs; this page contains no hand-typed results.
 
 ## The evidence
 
-<!-- DAY0:START -->
-_All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50) with an assumed site mix._
+### Day-0 report — v3 (frozen v3 rule, fresh test seed; the version the deck reports)
 
-#### Day 0 on a new layer: what each option gives you
+<!-- DAY0_V3:START -->
+_v3: All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50, `results/v3/exp3/samples.csv`) with an assumed site mix._
+
+#### Day 0 on a new layer (v3): what each option gives you
+
+|  | Verifier (ours) | CNN (Manhattan-trained) | Die-to-die (single) |
+|---|---|---|---|
+| Labelled images needed before first use | none (3 scribe images per layer) | a labelled training set (Manhattan here) | labelled val per dose, to fit the rule |
+| F1 on a new layout: via | 0.84 [0.78, 0.90] (n=144) | 0.75 [0.67, 0.82] (n=144) | 0.56 [0.46, 0.66] (n=144) |
+| F1 on a new layout: curvy | 0.90 [0.84, 0.95] (n=144) | 0.83 [0.77, 0.89] (n=144) | 0.55 [0.44, 0.64] (n=144) |
+| F1 on the layout the CNN was trained on (Manhattan) | 0.87 [0.81, 0.92] (n=144) | 0.92 [0.88, 0.96] (n=144) | 0.62 [0.51, 0.72] (n=144) |
+| Setup per layer | 43 ms calibration | training run (GPU) | rule fit |
+| Time per patch (this CPU) | 130 ms | 2 ms | 31 ms |
+| Says why it flagged a site | yes: located merge/cut events, bottleneck, SDF energy | no (a probability) | no (a difference map) |
+
+Where the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.
+
+#### Review queue (v3): 1,000 flagged sites on a new via layer, 5% real killers (50 sites)
+
+| Sites (95% CI) | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
+|---|---|---|---|---|
+| Killers caught (flagged KILLER) | 45 [42, 48] | 41 [37, 44] | 26 [22, 29] | 32 [28, 36] |
+| Killers flagged NEAR_MISS (still reviewed) | 1 [0, 3] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| Killers missed (passed as harmless) | 3 [1, 6] | 9 [6, 13] | 24 [21, 28] | 18 [14, 22] |
+| Non-killer sites flagged KILLER (incl. near-misses) | 34 [22, 46] | 119 [42, 228] | 81 [40, 156] | 131 [55, 238] |
+| Near-misses flagged NEAR_MISS (reliability bin) | 59 [48, 71] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| Harmless sites flagged NEAR_MISS | 214 [71, 356] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| All sites sent to an engineer | 353 [212, 498] | 160 [81, 268] | 107 [64, 184] | 163 [87, 270] |
+
+Site mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament (near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.
+
+Other prevalences (killers missed / non-killer sites flagged KILLER):
+
+| Real killers | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
+|---|---|---|---|---|
+| 1% | 1 [0, 1] / 35 [23, 47] | 2 [1, 3] / 124 [43, 237] | 5 [4, 6] / 85 [41, 163] | 4 [3, 4] / 136 [58, 248] |
+| 20% | 14 [6, 25] / 28 [18, 38] | 36 [22, 53] / 100 [35, 192] | 97 [83, 111] / 68 [33, 132] | 72 [56, 89] / 110 [47, 200] |
+
+#### Label break-even (v3)
+
+The label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run** for v3 (the v2 break-even compares the CNN against the v2 verifier).
+<!-- DAY0_V3:END -->
+
+### Day-0 report — v2 (kept for comparison; same projection method, site mix and seed)
+
+<!-- DAY0:START -->
+_v2: All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50, `results/v2/exp3/samples.csv`) with an assumed site mix._
+
+#### Day 0 on a new layer (v2): what each option gives you
 
 |  | Verifier (ours) | CNN (Manhattan-trained) | Die-to-die (single) |
 |---|---|---|---|
@@ -50,7 +97,7 @@ _All numbers are **synthetic data**; the review queue is a **projection** from m
 
 Where the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.
 
-#### Review queue: 1,000 flagged sites on a new via layer, 5% real killers (50 sites)
+#### Review queue (v2): 1,000 flagged sites on a new via layer, 5% real killers (50 sites)
 
 | Sites (95% CI) | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
 |---|---|---|---|---|
@@ -71,7 +118,7 @@ Other prevalences (killers missed / non-killer sites flagged KILLER):
 | 1% | 0 [0, 1] / 23 [12, 35] | 2 [2, 3] / 76 [29, 153] | 5 [4, 6] / 47 [41, 54] | 4 [3, 5] / 107 [64, 184] |
 | 20% | 8 [0, 17] / 18 [10, 28] | 50 [36, 64] / 62 [23, 123] | 97 [83, 111] / 38 [33, 43] | 78 [61, 94] / 87 [52, 148] |
 
-#### Label break-even: labelled images of the new layout the CNN needs to match the verifier
+#### Label break-even (v2): labelled images of the new layout the CNN needs to match the verifier
 
 | Family | CNN threshold | Verifier F1 | Break-even k (seed-mean F1 >= verifier) | Clearly better k (every seed's CI above) | n |
 |---|---|---|---|---|---|

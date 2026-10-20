@@ -36,3 +36,11 @@ def test_scenario_rows_name_non_killers_not_harmless():
 def tmp_path_dummy():
     import tempfile
     return Path(tempfile.mkdtemp())
+
+
+def test_v3_day0_block_is_labelled_v3_and_renders_from_results_v3(tmp_path):
+    root = tmp_path / "v3"
+    (root / "day0").mkdir(parents=True)
+    shutil.copy("results/v3/day0/scenario.csv", root / "day0" / "scenario.csv")
+    md = render_day0(root, "day0", "v3")
+    assert "Review queue (v3)" in md and "not yet run** for v3" in md and "Killers missed" in md

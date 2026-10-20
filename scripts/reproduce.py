@@ -4,6 +4,7 @@
   python scripts/reproduce.py             # full v2 run, writes results/v2/, rewrites the README v2 table
   python scripts/reproduce.py --version v1   # the first, pre-registered run: results/, README v1 table
   python scripts/reproduce.py --version v3   # v3: event rule selected on val (results/v3/calib), Exp 1-6 on the fresh test seed
+  python scripts/reproduce.py --version v3 --only day0   # v3 day-0 projection only (results/v3/day0/) from results/v3/exp3
 
 v1 is the pre-registered first run; v2 adds post-hoc fixes chosen on Manhattan val only (docs/V2_FIXES.md).
 
@@ -38,11 +39,22 @@ def main() -> None:
     a = ap.parse_args()
     if a.version == "v3":  # own selection + runner; v1 / v2 paths below are unchanged
         from experiments import v3_run, v3_select, v3_val_report
-        if not a.skip_select:
-            c = v3_select.V3Cfg.quick_cfg() if a.quick else v3_select.V3Cfg()
-            v3_select.run(c)
-            v3_val_report.run(c)
-        v3_run.run(a.quick, a.only)
+        only = set(a.only.split(",")) if a.only else set()
+        if not only or only - {"day0"}:           # --only day0 re-projects from the existing v3 Exp 3 samples only
+            if not a.skip_select:
+                c = v3_select.V3Cfg.quick_cfg() if a.quick else v3_select.V3Cfg()
+                v3_select.run(c)
+                v3_val_report.run(c)
+            v3_run.run(a.quick, ",".join(sorted(only - {"day0"})))
+        if not only or "day0" in only:
+            cfg3 = ExpCfg.quick("v3") if a.quick else ExpCfg.full("v3")
+            print("== day0 scenario (v3) ==", flush=True)
+            day0_scenario.run(cfg3)
+            if not a.quick or a.update_readme:
+                day0 = report.render_day0(select_config.results_root(cfg3), day0_scenario.OUT_DIR["v3"], "v3")
+                for doc in ("README.md", "docs/USE_CASE.md"):
+                    report.update_block(doc, day0, (report.DAY0_V3_START, report.DAY0_V3_END))
+                print("README / docs/USE_CASE.md v3 day-0 blocks updated")
         return
     cfg = ExpCfg.quick(a.version) if a.quick else ExpCfg.full(a.version)
     root = select_config.results_root(cfg)
@@ -68,7 +80,7 @@ def main() -> None:
         elif a.version == "v1":
             report.update_readme("README.md", root, (report.V1_START, report.V1_END))
         if a.version == "v2":
-            day0 = report.render_day0(root)
+            day0 = report.render_day0(root, version="v2")
             for doc in ("README.md", "docs/USE_CASE.md"):
                 report.update_block(doc, day0, (report.DAY0_START, report.DAY0_END))
         print("README / docs/USE_CASE.md generated blocks updated from", root)

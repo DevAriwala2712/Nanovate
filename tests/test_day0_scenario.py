@@ -43,3 +43,16 @@ def test_run_skips_a_method_column_that_is_absent(tmp_path, monkeypatch):
     assert set(tab.method) == {"verifier", "d2d_single", "d2d_double"}
     v = tab[(tab.method == "verifier") & (tab.prevalence == 0.05) & (tab.metric == "killers_caught")].iloc[0]
     assert v["mean"] == pytest.approx(50) and (tmp_path / "v2" / "quick" / "day0_scenario" / "scenario.csv").exists()
+
+
+def test_v3_run_reads_v3_samples_and_writes_results_v3_day0(tmp_path, monkeypatch):
+    """Same projection for v3: only the samples file and the output folder change (results/v3/day0/)."""
+    from experiments.common import ExpCfg
+    from experiments.day0_scenario import OUT_DIR, SAMPLES_CSV_V3
+    assert SAMPLES_CSV_V3 == "results/v3/exp3/samples.csv" and OUT_DIR["v3"] == "day0"
+    monkeypatch.setenv("NANOVATE_RESULTS_ROOT", str(tmp_path))
+    kinds = list(KILL + SAFE) * 4
+    df = pd.DataFrame(dict(family="via", dose=50.0, kind=kinds, verdict=["KILLER_OPEN" if k in KILL else "NUISANCE" for k in kinds]))
+    p = tmp_path / "samples.csv"; df.to_csv(p, index=False)
+    run(ExpCfg(quick=True, n_boot=20, version="v3"), samples_csv=str(p))
+    assert (tmp_path / "v3" / "quick" / "day0" / "scenario.csv").exists()

@@ -14,6 +14,7 @@ import pandas as pd
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
 V1_START, V1_END = "<!-- RESULTS_V1:START -->", "<!-- RESULTS_V1:END -->"
 DAY0_START, DAY0_END = "<!-- DAY0:START -->", "<!-- DAY0:END -->"
+DAY0_V3_START, DAY0_V3_END = "<!-- DAY0_V3:START -->", "<!-- DAY0_V3:END -->"
 V3_START, V3_END = "<!-- RESULTS_V3:START -->", "<!-- RESULTS_V3:END -->"
 METHOD_NAMES = {"verifier": "Verifier (ours)", "d2d_single": "Die-to-die (single)", "d2d_double": "Die-to-die (double)", "cnn": "CNN (Manhattan-trained)"}
 
@@ -199,17 +200,19 @@ DAY0_METHODS = {"verifier": "Verifier (no labels)", "cnn": "CNN (Manhattan-train
                 "d2d_double": "Die-to-die (double)"}
 
 
-def render_day0(root: str | Path) -> str:
+def render_day0(root: str | Path, scenario_dir: str = "day0_scenario", version: str = "") -> str:
     """The day-0 use-case block: advantages vs disadvantages, the review-queue projection, the label break-even.
 
-    Reads results/v2/{exp3/geometry_f1.csv, exp6/latency.csv, day0_scenario/scenario.csv, breakeven/summary.csv};
-    any missing file drops its part (break-even says "not yet run"). Synthetic data throughout.
+    Reads <root>/{exp3/geometry_f1.csv, exp6/latency.csv, <scenario_dir>/scenario.csv, breakeven/summary.csv}
+    (v2: results/v2, scenario_dir day0_scenario; v3: results/v3, scenario_dir day0); any missing file drops its part
+    (break-even says "not yet run"). ``version`` (e.g. "v2") labels every heading. Synthetic data throughout.
     """
     root = Path(root)
-    parts = ["_All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates "
-             "(via family, dose 50) with an assumed site mix._"]
+    tag = f" ({version})" if version else ""
+    parts = [f"_{version + ': ' if version else ''}All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates "
+             f"(via family, dose 50{f', `results/{version}/exp3/samples.csv`' if version else ''}) with an assumed site mix._"]
     geo, lat = _read(root, "exp3", "geometry_f1"), _read(root, "exp6", "latency")
-    sc, be = _read(root, "day0_scenario", "scenario"), _read(root, "breakeven", "summary")
+    sc, be = _read(root, scenario_dir, "scenario"), _read(root, "breakeven", "summary")
     if geo is not None:
         def f1(m, fam):
             r = geo[(geo.method == m) & (geo.family == fam)]
@@ -226,8 +229,9 @@ def render_day0(root: str | Path) -> str:
                 ["F1 on the layout the CNN was trained on (Manhattan)", f1("verifier", "manhattan"), f1("cnn", "manhattan"), f1("d2d_single", "manhattan")],
                 ["Setup per layer", lat_of.get("cal", "n/a") + " calibration", "training run (GPU)", "rule fit"],
                 ["Time per patch (this CPU)", lat_of.get("ver", "n/a"), lat_of.get("cnn", "n/a"), lat_of.get("d2d", "n/a")],
-                ["Says why it flagged a site", "yes: delta-beta, bottleneck, SDF energy", "no (a probability)", "no (a difference map)"]]
-        parts.append("#### Day 0 on a new layer: what each option gives you\n\n" + _md(["", "Verifier (ours)", "CNN (Manhattan-trained)", "Die-to-die (single)"], rows)
+                ["Says why it flagged a site", "yes: located merge/cut events, bottleneck, SDF energy" if version == "v3" else "yes: delta-beta, bottleneck, SDF energy",
+                 "no (a probability)", "no (a difference map)"]]
+        parts.append(f"#### Day 0 on a new layer{tag}: what each option gives you\n\n" + _md(["", "Verifier (ours)", "CNN (Manhattan-trained)", "Die-to-die (single)"], rows)
                      + "\n\nWhere the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.")
     if sc is not None:
         methods = [m for m in DAY0_METHODS if m in set(sc.method)]
@@ -242,7 +246,7 @@ def render_day0(root: str | Path) -> str:
                   ("sites_to_engineer", "All sites sent to an engineer")]
         rows = [[lab, *[cell(m, k, p) for m in methods]] for k, lab in labels]
         n_k = sc[(sc.metric == "killers_total") & (sc.prevalence == p)]["mean"].iloc[0]
-        parts.append(f"#### Review queue: 1,000 flagged sites on a new via layer, {100 * p:.0f}% real killers ({n_k:.0f} sites)\n\n"
+        parts.append(f"#### Review queue{tag}: 1,000 flagged sites on a new via layer, {100 * p:.0f}% real killers ({n_k:.0f} sites)\n\n"
                      + _md(["Sites (95% CI)", *[DAY0_METHODS[m] for m in methods]], rows)
                      + "\n\nSite mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament "
                        "(near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.")
@@ -250,10 +254,11 @@ def render_day0(root: str | Path) -> str:
         if rows:
             parts.append("Other prevalences (killers missed / non-killer sites flagged KILLER):\n\n" + _md(["Real killers", *[DAY0_METHODS[m] for m in methods]], rows))
     if be is None:
-        parts.append("#### Label break-even\n\nThe label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run**.")
+        parts.append(f"#### Label break-even{tag}\n\nThe label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run**"
+                     + (f" for {version} (the v2 break-even compares the CNN against the v2 verifier)." if version and version != "v2" else "."))
     else:
         rows = [[r.family, r.threshold_rule, f"{r.verifier_f1:.2f}", str(r.breakeven_k), str(r.clearly_better_k), f"{int(r.n_seeds)} seeds, n={int(r.n_test)}"]
                 for r in be.itertuples()]
-        parts.append("#### Label break-even: labelled images of the new layout the CNN needs to match the verifier\n\n"
+        parts.append(f"#### Label break-even{tag}: labelled images of the new layout the CNN needs to match the verifier\n\n"
                      + _md(["Family", "CNN threshold", "Verifier F1", "Break-even k (seed-mean F1 >= verifier)", "Clearly better k (every seed's CI above)", "n"], rows))
     return "\n\n".join(parts)
