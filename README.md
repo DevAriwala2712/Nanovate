@@ -1,5 +1,16 @@
 # Nanovate — training-free SEM topology defect verifier (synthetic-data prototype)
 
+<!-- STATUS:START -->
+> **Status** _(generated from the result CSVs by `scripts/reproduce.py`; not typed by hand)_
+>
+> - **Synthetic-data prototype.** Every number below except the real-data line is measured on the simulated SEM testbed (v3: rule frozen on Manhattan val, Experiments 1–6 run once on a fresh test seed); 95% bootstrap CIs, n beside each.
+> - **v3 headline (synthetic):** killer F1 on an unseen via layout 0.84 [0.78, 0.90] (n=144) vs the Manhattan-trained CNN 0.75 [0.67, 0.82] (n=144); curvy 0.90 [0.84, 0.95] (n=144) vs 0.83 [0.77, 0.89] (n=144). Review-queue projection (via, 50 killers in 1,000 sites): 3 [1, 6] killers missed vs 9 [6, 13] for the CNN, n=144 samples per method.
+> - **v3 nuisance stress (synthetic):** worst cell at LER ≤ 1.5 nm, suppression 67% [50, 83] (n=24) at sigma 1.5 nm, grain 20%, bridge recall 88% [75, 100] (n=24) at sigma 0.5 nm, grain 30% (target ≥ 90% / ≥ 90%: **not met**).
+> - **Where the CNN wins (synthetic):** on its training layout (Manhattan) F1 0.92 [0.88, 0.96] (n=144) vs 0.87 [0.81, 0.92] (n=144); at low dose (lowest dose with F1 ≥ 0.9: CNN 20 e⁻/px, verifier none); and speed, 2.4 ms vs 129.8 ms per patch (median, this CPU).
+> - **Real SEM data (Track C Rung 1): not yet working.** On real images of defect-free hole arrays the frozen v3 verifier calls 78.5% [66.4, 87.6] (n=158 tiles) KILLER (32 images; pre-registered target ≤ 5%, **not met**; [docs/REAL_DATA_RUNG1.md](docs/REAL_DATA_RUNG1.md)). Fixing this is the next step.
+> - **Demo app** (`python -m nanovate.app`) runs pipeline **v3** by default; `--pipeline-version v2` switches to v2.
+<!-- STATUS:END -->
+
 **Thesis.** A SEM defect inspector should call a defect a *killer* only when the circuit's **topology differs from
 CAD** (a short, an open, a stray conductive particle), not when pixels merely differ (line-edge roughness, grain,
 shot noise, charging, a few nanometres of shift). This prototype tests that idea with no learned model: a per-layer

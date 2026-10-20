@@ -15,6 +15,8 @@ START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
 V1_START, V1_END = "<!-- RESULTS_V1:START -->", "<!-- RESULTS_V1:END -->"
 DAY0_START, DAY0_END = "<!-- DAY0:START -->", "<!-- DAY0:END -->"
 DAY0_V3_START, DAY0_V3_END = "<!-- DAY0_V3:START -->", "<!-- DAY0_V3:END -->"
+STATUS_START, STATUS_END = "<!-- STATUS:START -->", "<!-- STATUS:END -->"
+REAL_RUNG1 = Path("results/real/rung1/summary.csv")
 V3_START, V3_END = "<!-- RESULTS_V3:START -->", "<!-- RESULTS_V3:END -->"
 METHOD_NAMES = {"verifier": "Verifier (ours)", "d2d_single": "Die-to-die (single)", "d2d_double": "Die-to-die (double)", "cnn": "CNN (Manhattan-trained)"}
 
@@ -262,3 +264,79 @@ def render_day0(root: str | Path, scenario_dir: str = "day0_scenario", version: 
         parts.append(f"#### Label break-even{tag}: labelled images of the new layout the CNN needs to match the verifier\n\n"
                      + _md(["Family", "CNN threshold", "Verifier F1", "Break-even k (seed-mean F1 >= verifier)", "Clearly better k (every seed's CI above)", "n"], rows))
     return "\n\n".join(parts)
+
+
+def render_status(v3_root: str | Path = "results/v3", real_csv: str | Path = REAL_RUNG1, app_default: str | None = None) -> str:
+    """The README status box (directly under the title): every number is read from the v3 / Track C result CSVs.
+
+    Reads <v3_root>/{exp3/geometry_f1.csv, day0/scenario.csv, phase2_targets.csv, exp2/lowest_dose.csv, exp6/latency.csv}
+    and results/real/rung1/summary.csv; ``app_default`` defaults to ``nanovate.app.engine.DEFAULT_VERSION``.
+    """
+    root = Path(v3_root)
+    if app_default is None:
+        from nanovate.app.engine import DEFAULT_VERSION as app_default  # noqa: N811 (the app's own default)
+    geo, sc, lat = _read(root, "exp3", "geometry_f1"), _read(root, "day0", "scenario"), _read(root, "exp6", "latency")
+    tg = pd.read_csv(root / "phase2_targets.csv") if (root / "phase2_targets.csv").exists() else None
+    low = _read(root, "exp2", "lowest_dose")
+    real = pd.read_csv(real_csv) if Path(real_csv).exists() else None
+
+    def f1(m, fam):
+        r = geo[(geo.method == m) & (geo.family == fam)] if geo is not None else []
+        return _ci(r.f1.iloc[0], r.ci_lo.iloc[0], r.ci_hi.iloc[0], r.n.iloc[0]) if len(r) else "n/a"
+
+    def missed(m):
+        r = sc[(sc.method == m) & (sc.metric == "killers_missed") & (sc.prevalence == 0.05)] if sc is not None else []
+        return f"{r['mean'].iloc[0]:.0f} [{max(r.ci_lo.iloc[0], 0):.0f}, {r.ci_hi.iloc[0]:.0f}]" if len(r) else "n/a"
+
+    def target(prefix):
+        r = tg[tg.target.str.startswith(prefix)] if tg is not None else []
+        if not len(r):
+            return "n/a"
+        r = r.iloc[0]
+        return f"{_ci(r['mean'], r.ci_lo, r.ci_hi, r.n, pct=True)} at {r.cell}"
+
+    def ms(what):
+        r = lat[lat.what == what] if lat is not None else []
+        return f"{r['median'].iloc[0]:.1f} ms" if len(r) else "n/a"
+
+    def lowest(m):
+        r = low[low.method == m] if low is not None else []
+        v = str(r.iloc[0, 1]) if len(r) else "n/a"
+        return "none" if v == "none" else f"{float(v):g} e⁻/px" if v != "n/a" else v
+
+    n_k = sc[(sc.metric == "killers_total") & (sc.prevalence == 0.05)]["mean"].iloc[0] if sc is not None else float("nan")
+    if real is not None:
+        r = real[(real.metric == "false alarm: KILLER on clean tiles") & (real.scope == "arm C, all ZMW groups")].iloc[0]
+        ok = r["mean"] <= 0.05          # pre-registered target (docs/REAL_DATA_PREREG.md): false KILLER <= 5% of clean tiles
+        real_line = (f"**Real SEM data (Track C Rung 1): {'target met' if ok else 'not yet working'}.** On real images of defect-free hole arrays the frozen v3 verifier "
+                     f"calls {100 * r['mean']:.1f}% [{100 * r.ci_lo:.1f}, {100 * r.ci_hi:.1f}] (n={int(r.n_tiles)} tiles) KILLER ({int(r.n_images)} images; pre-registered target "
+                     f"≤ 5%, {'met' if ok else '**not met**'}; [docs/REAL_DATA_RUNG1.md](docs/REAL_DATA_RUNG1.md))."
+                     + ("" if ok else " Fixing this is the next step."))
+    else:
+        real_line = "**Real SEM data (Track C Rung 1):** not run yet."
+    lines = [
+        "**Synthetic-data prototype.** Every number below except the real-data line is measured on the simulated SEM testbed "
+        "(v3: rule frozen on Manhattan val, Experiments 1–6 run once on a fresh test seed); 95% bootstrap CIs, n beside each.",
+        f"**v3 headline (synthetic):** killer F1 on an unseen via layout {f1('verifier', 'via')} vs the Manhattan-trained CNN {f1('cnn', 'via')}; "
+        f"curvy {f1('verifier', 'curvy')} vs {f1('cnn', 'curvy')}. Review-queue projection (via, {n_k:.0f} killers in 1,000 sites): "
+        f"{missed('verifier')} killers missed vs {missed('cnn')} for the CNN, n=144 samples per method.",
+        f"**v3 nuisance stress (synthetic):** worst cell at LER ≤ 1.5 nm, suppression {target('Exp 1 suppression')}, "
+        f"bridge recall {target('Exp 1 bridge recall')} (target ≥ 90% / ≥ 90%: "
+        f"{'met' if tg is not None and tg[tg.target.str.startswith('Exp 1')].met.all() else '**not met**'}).",
+        f"**Where the CNN wins (synthetic):** on its training layout (Manhattan) F1 {f1('cnn', 'manhattan')} vs {f1('verifier', 'manhattan')}; "
+        f"at low dose (lowest dose with F1 ≥ 0.9: CNN {lowest('cnn')}, verifier {lowest('verifier')}); and speed, "
+        f"{ms('cnn batch 1 (default threads)')} vs {ms('verifier: total per patch (singleton path)')} per patch (median, this CPU).",
+        real_line,
+        f"**Demo app** (`python -m nanovate.app`) runs pipeline **{app_default}** by default; `--pipeline-version v2` switches to v2.",
+    ]
+    return "> **Status** _(generated from the result CSVs by `scripts/reproduce.py`; not typed by hand)_\n>\n" + "\n".join(f"> - {ln}" for ln in lines)
+
+
+def update_status(readme: str | Path = "README.md", **kw) -> str:
+    """Write the status box between STATUS markers, inserting the markers under the title on first use."""
+    path = Path(readme)
+    text = path.read_text()
+    if STATUS_START not in text:
+        title, rest = text.split("\n", 1)
+        path.write_text(f"{title}\n\n{STATUS_START}\n{STATUS_END}\n{rest}")
+    return update_block(path, render_status(**kw), (STATUS_START, STATUS_END))
