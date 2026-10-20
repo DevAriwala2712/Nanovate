@@ -1,6 +1,22 @@
-# Nanovate: Next Paths (post-v2 roadmap, revision 2)
+# Nanovate: Next Paths (post-v2 roadmap, revision 2; status updated for v3 and Track C Rung 1)
 
-*Status as of v2 (synthetic data only). Every target below is a hypothesis to be measured and reported as met or missed. Every new idea comes with a pre-registered **kill condition**: if the data says it doesn't earn its place, it gets scrapped, including ideas we already built.*
+## Done / In progress / Next (as of 2026-10-20)
+
+**Done**
+- v1 (pre-registered), v2 (post-hoc fixes, val only) and **v3** (per-gap merge rule + located events, frozen on val, Experiments 1–6 run once on a fresh test seed; tag `v3.0`). Synthetic data.
+- Day-0 review-queue projection for v2 and v3 (`results/v2/day0_scenario/`, `results/v3/day0/`); label break-even (v2 only).
+- Demo app with a v2 | v3 pipeline switch (v3 default), version badges, Evidence tab per version, and val-split demo presets.
+- **Track C Rung 1 run once** on real SEM images of defect-free hole arrays: **78.5% false KILLER** on clean tiles (target ≤ 5%, **not met**; `docs/REAL_DATA_RUNG1.md`).
+
+**In progress**
+- Fixing the Rung 1 failure: Module 1 calibration transfer (contrast sign inverted on G01; the template explains about 15–25% of the real image's variation), edge-halo appearance, and alignment on periodic patterns. Any change is chosen on synthetic val, then Rung 1 is repeated once.
+
+**Next**
+- Rung 1 repeat with the disclosed fix; Rung 2 lab request (own test chip, true CAD); B2 fast Betti path; B1 agility comparison; push tags `v2.0` / `v3.0`.
+
+---
+
+*Status below as of v2 (synthetic data only), with v3 and Rung 1 added where measured. Every target below is a hypothesis to be measured and reported as met or missed. Every new idea comes with a pre-registered **kill condition**: if the data says it doesn't earn its place, it gets scrapped, including ideas we already built.*
 
 **Revision 2 adds:** Track B (algorithm agility, compute, acquisition robustness), each built as *industry-style baseline first, then our own solution*; a Module 2 keep-or-scrap test; a tighter near-miss false-flag measurement; and a consolidated scrap list.
 
@@ -8,26 +24,30 @@
 
 ## Where we stand
 
-| Area | v2 measured | Realistic ceiling | v3.0 plan doc claim |
-|---|---|---|---|
-| Zero-shot killer F1 (via / curvy) | 0.88 / 0.84 | 0.90–0.93 | 0.96 |
-| Manhattan killer F1 | 0.81 (CNN: 0.94) | ~0.90 | 0.97 |
-| Noise-free ceiling | 0.84 | >0.92 needed for the above | not considered |
-| Near-miss recall | 90% | ~95% | 97.4% |
-| Nuisance suppression (LER 1.5 nm, grain 30%) | 88%, bridge recall 79% | ~95% / ~95% | 98.6% |
-| Low-dose F1 (5 e⁻/px) | 0.67 | ~0.75 | 0.92 |
-| Calibration | 43 ms | ~15 ms | 10 ms |
-| Time per patch | 99 ms (CPU; 76 ms of it is Module 4) | 5–10 ms GPU, or <5 ms CPU with Track B2 | ~0.03 ms |
-| Real SEM validation | none | one public benchmark | claimed |
+*Numbers copied from the generated README tables (v2: `results/v2/`; v3: `results/v3/`, fresh test seed; Rung 1: `results/real/rung1/`). The plan-doc column is an unmeasured claim (see `docs/README.md`).*
+
+| Area | v2 measured | v3 measured (fresh test seed) | Realistic ceiling | v3.0 plan doc claim (not measured) |
+|---|---|---|---|---|
+| Zero-shot killer F1 (via / curvy) | 0.88 / 0.84 | 0.84 / 0.90 (CNN 0.75 / 0.83) | 0.90–0.93 | 0.96 |
+| Manhattan killer F1 | 0.81 (CNN: 0.94) | 0.87 (CNN: 0.92) | ~0.90 | 0.97 |
+| Noise-free ceiling | 0.84 | 0.89 (target 0.92, not met) | >0.92 needed for the above | not considered |
+| Near-miss recall | 90% | 85% | ~95% | 97.4% |
+| Nuisance suppression (LER 1.5 nm, grain 30%) | 88%, bridge recall 79% | 75%, bridge recall 96% (worst cell at LER ≤ 1.5 nm: 67% / 88%) | ~95% / ~95% | 98.6% |
+| Low-dose F1 (5 e⁻/px) | 0.67 | 0.67 | ~0.75 | 0.92 |
+| Calibration | 43 ms | 43 ms | ~15 ms | 10 ms |
+| Time per patch | 99 ms (CPU; 76 ms of it is Module 4) | 130 ms (CPU; 107 ms of it is Module 4) | 5–10 ms GPU, or <5 ms CPU with Track B2 | ~0.03 ms |
+| Killers missed per 50 (via review-queue projection) | 2 (CNN 12) | 3 [1, 6] (CNN 9 [6, 13]) | — | — |
+| Real SEM validation | none | Rung 1: 78.5% false KILLER on clean real tiles (target ≤ 5%, not met) | one public benchmark | claimed |
 
 **Key facts that drive the plan**
 
-1. The verifier tops out at **0.84 F1 even on noise-free images**, so denoising will not raise the ceiling. The bottleneck is resolution and/or the single global τ.
-2. The CNN beats us **in-domain**, at **low dose**, and on **speed**. We win on **unseen via layouts with zero labels** and **miss fewer killers** (2 vs 12 of 50).
-3. We send **more** sites to review (179 vs 111). The pitch is "fewer escapes", not "less review".
+1. v2 topped out at **0.84 F1 even on noise-free images**; v3's per-gap rule raised that to **0.89**, still short of 0.92. Part of the rest is an optical limit (cuts shorter than 4 nm, `docs/V3_PHASE1_DIAGNOSIS.md`).
+2. The CNN beats us **in-domain**, at **low dose**, and on **speed**. We win on **unseen via and curvy layouts with zero labels** and **miss fewer killers** (v2: 2 vs 12 of 50; v3: 3 vs 9 of 50, projection).
+3. We send **more** sites to review (v2: 179 vs 111; v3: 353 vs 160). The pitch is "fewer escapes", not "less review".
 4. The method needs **CAD aligned to every image**, and public SEM datasets almost never include CAD.
 5. The **stack path (Module 2) has not beaten per-patch smoothing** for Module 4 (better particles, worse opens). It has to earn its place.
-6. The near-miss false-flag rate is unusable as a claim: harmless sites flagged NEAR_MISS = 36, CI [0, 107].
+6. The near-miss false-flag rate is unusable as a claim: harmless sites flagged NEAR_MISS = 36, CI [0, 107] (v2); 214, CI [71, 356] (v3), worse.
+7. **Real data (Rung 1):** the frozen v3 verifier calls 78.5% of clean real tiles KILLER. The first bottleneck is Module 1 calibration transfer, not the topology rule (`docs/REAL_DATA_RUNG1.md` §4).
 
 ---
 
@@ -41,7 +61,7 @@
 
 ## Phase 0: BIOS hack (done)
 
-Demo app, frozen v2, honest deck. Remaining items outside the repo: GitHub "About" tagline (still "revolutionary"), a tagged v2 release.
+Demo app (now v2 | v3 switch, **v3 by default**, version badge on every verdict and report), frozen v2 and v3 configs, honest deck reporting v3, README status box with the Rung 1 result. GitHub "About" tagline updated (2026-10-20). Annotated tags `v2.0` (commit 58cf3b6, `results/v2/`) and `v3.0` (commit 8ef81d8, `results/v3/`) exist locally; pushing them is the one remaining item.
 
 ---
 
@@ -155,10 +175,12 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ### Rung 1: defect-free real patterned structures (false alarms, calibration, alignment)
 
-- [ ] Public, licence-clear real SEM images of simple periodic structures (line/space gratings, contact/via arrays, calibration specimens) with a stated pixel size. Download script + manifest only; no images committed.
-- [ ] Reference layout: no CAD exists, so fit a parametric layout (pitch, line width, angle, offset) on calibration regions only and render it. Labelled everywhere as a **FITTED reference, not CAD**: a fit can absorb a real defect.
-- [ ] Module 1 stand-in scribe patches: 3 named regions from calibration images.
-- [ ] Measure: wrong KILLER rate on clean structures (target ≤ 5%), calibration error, alignment error, run time. Pre-registered in `docs/REAL_DATA_PREREG.md`.
+*Status: run once (2026-10-19) on FIB-milled hole arrays; false KILLER 78.5% [66.4, 87.6] of 158 clean tiles, target ≤ 5% **not met** (`docs/REAL_DATA_RUNG1.md`). Next: a calibration guard / edge model / periodic alignment change chosen on synthetic val, then one repeat.*
+
+- [x] Public, licence-clear real SEM images of simple periodic structures (line/space gratings, contact/via arrays, calibration specimens) with a stated pixel size. Download script + manifest only; no images committed.
+- [x] Reference layout: no CAD exists, so fit a parametric layout (pitch, line width, angle, offset) on calibration regions only and render it. Labelled everywhere as a **FITTED reference, not CAD**: a fit can absorb a real defect.
+- [x] Module 1 stand-in scribe patches: 3 named regions from calibration images.
+- [x] Measure: wrong KILLER rate on clean structures (target ≤ 5%), calibration error, alignment error, run time. Pre-registered in `docs/REAL_DATA_PREREG.md`.
 
 *Tells us:* whether the frozen verifier stays quiet on real noise, charging and edge contrast. *Does not tell us:* anything about recall.
 
