@@ -1,0 +1,39 @@
+variant,population,metric,mean,ci_lo,ci_hi,n_tiles,n_images
+primary,fresh,KILLER on clean tiles (UNVERIFIED counts as not KILLER),0.0,0.0,0.0,68,17
+primary,fresh,coverage (verified fraction),1.0,1.0,1.0,68,17
+primary,fresh,KILLER on clean tiles if the guard were off,0.0,0.0,0.0,68,17
+primary,fresh,KILLER among verified clean tiles,0.0,0.0,0.0,68,17
+primary,fresh/FRESH,killer,0.0,0.0,0.0,68,17
+primary,fresh/FRESH,verified,1.0,1.0,1.0,68,17
+primary,fresh/FRESH,killer_unguarded,0.0,0.0,0.0,68,17
+primary,fresh,KILLER on clean overlay tiles (not in target),0.058823529411764705,0.0,0.14705882352941177,34,17
+primary,orig,KILLER on clean tiles (UNVERIFIED counts as not KILLER),0.13291139240506328,0.057291666666666664,0.2361204954954955,158,32
+primary,orig,coverage (verified fraction),0.7341772151898734,0.5048543689320388,1.0,158,32
+primary,orig,KILLER on clean tiles if the guard were off,0.3987341772151899,0.171875,0.5971854467000097,158,32
+primary,orig,KILLER among verified clean tiles,0.1810344827586207,0.09482758620689655,0.28448275862068967,116,29
+primary,orig/G01,killer,0.0,0.0,0.0,42,3
+primary,orig/G01,verified,0.0,0.0,0.0,42,3
+primary,orig/G01,killer_unguarded,1.0,1.0,1.0,42,3
+primary,orig/G29,killer,0.1810344827586207,0.09482758620689655,0.28448275862068967,116,29
+primary,orig/G29,verified,1.0,1.0,1.0,116,29
+primary,orig/G29,killer_unguarded,0.1810344827586207,0.09482758620689655,0.28448275862068967,116,29
+primary,orig,KILLER on clean overlay tiles (not in target),0.1896551724137931,0.08620689655172414,0.3103448275862069,58,29
+secondary_no_guard,fresh,KILLER on clean tiles (UNVERIFIED counts as not KILLER),0.0,0.0,0.0,68,17
+secondary_no_guard,fresh,coverage (verified fraction),1.0,1.0,1.0,68,17
+secondary_no_guard,fresh,KILLER on clean tiles if the guard were off,0.0,0.0,0.0,68,17
+secondary_no_guard,fresh,KILLER among verified clean tiles,0.0,0.0,0.0,68,17
+secondary_no_guard,fresh/FRESH,killer,0.0,0.0,0.0,68,17
+secondary_no_guard,fresh/FRESH,verified,1.0,1.0,1.0,68,17
+secondary_no_guard,fresh/FRESH,killer_unguarded,0.0,0.0,0.0,68,17
+secondary_no_guard,fresh,KILLER on clean overlay tiles (not in target),0.058823529411764705,0.0,0.14705882352941177,34,17
+secondary_no_guard,orig,KILLER on clean tiles (UNVERIFIED counts as not KILLER),0.3987341772151899,0.171875,0.5971854467000097,158,32
+secondary_no_guard,orig,coverage (verified fraction),1.0,1.0,1.0,158,32
+secondary_no_guard,orig,KILLER on clean tiles if the guard were off,0.3987341772151899,0.171875,0.5971854467000097,158,32
+secondary_no_guard,orig,KILLER among verified clean tiles,0.3987341772151899,0.171875,0.5971854467000097,158,32
+secondary_no_guard,orig/G01,killer,1.0,1.0,1.0,42,3
+secondary_no_guard,orig/G01,verified,1.0,1.0,1.0,42,3
+secondary_no_guard,orig/G01,killer_unguarded,1.0,1.0,1.0,42,3
+secondary_no_guard,orig/G29,killer,0.1810344827586207,0.09482758620689655,0.28448275862068967,116,29
+secondary_no_guard,orig/G29,verified,1.0,1.0,1.0,116,29
+secondary_no_guard,orig/G29,killer_unguarded,0.1810344827586207,0.09482758620689655,0.28448275862068967,116,29
+secondary_no_guard,orig,KILLER on clean overlay tiles (not in target),0.1896551724137931,0.08620689655172414,0.3103448275862069,58,29

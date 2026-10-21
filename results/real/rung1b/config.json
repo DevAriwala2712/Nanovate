@@ -1,0 +1,93 @@
+{
+  "data": "REAL SEM images (Track C Rung 1b)",
+  "reference": "FITTED, not CAD",
+  "prereg": "docs/REAL_DATA_RUNG1B_PREREG.md",
+  "prereg_commit": "8da0f715cf1dd378d2611cc1b37d46382e52be55",
+  "frozen": {
+    "data": "synthetic",
+    "split": "val (Manhattan)",
+    "prereg": "docs/REAL_DATA_RUNG1B_PREREG.md Part A",
+    "accept": {
+      "C2": true,
+      "C3": true,
+      "C1": true
+    },
+    "robust_cfg": {
+      "guard": true,
+      "guard_rel_spread": 0.5,
+      "clamp": [
+        0.5,
+        99.5
+      ],
+      "max_shift": 12.0
+    },
+    "base": {
+      "pipeline_cfg": {
+        "field_option": "template",
+        "tau": 0.35,
+        "pre_smooth": 1.0,
+        "region_mode": "splice",
+        "region_tol": 8,
+        "use_stack": false,
+        "align": true,
+        "d_star": 0.0779973055279618,
+        "e_star": 2.5748902690949445,
+        "gamma": 0.2,
+        "cap": 10.0,
+        "h1_fill": "dielectric",
+        "z_star": 5.46093693673947
+      },
+      "event_rule_cfg": {
+        "rule": "v3_events",
+        "pair_dist": 30.0,
+        "m_merge": 0.6,
+        "normalise": false,
+        "m_norm": 0.0,
+        "body_radius": 6.0,
+        "m_cut": 0.4,
+        "e_edge": null
+      }
+    },
+    "c1_cells": 175,
+    "c1_triggers": 0,
+    "quick": false
+  },
+  "variants": {
+    "primary": {
+      "guard": true,
+      "guard_rel_spread": 0.5,
+      "clamp": [
+        0.5,
+        99.5
+      ],
+      "max_shift": 12.0
+    },
+    "secondary_no_guard": {
+      "guard": false,
+      "guard_rel_spread": 0.5,
+      "clamp": [
+        0.5,
+        99.5
+      ],
+      "max_shift": 12.0
+    }
+  },
+  "fresh_cal_index": [
+    0,
+    10,
+    19
+  ],
+  "overlay_box": [
+    [
+      241,
+      272
+    ],
+    [
+      369,
+      400
+    ]
+  ],
+  "n_boot": 1000,
+  "seed": 0,
+  "wall_s": 108.61658596992493
+}

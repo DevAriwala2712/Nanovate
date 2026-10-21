@@ -585,3 +585,13 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
 - Surprise: the B2 premise was wrong. Module 4 counts bars with lifetime >= tau over all levels, not the Betti numbers of a
   single superlevel set; they coincide only on binary fields. Kill condition applied: GUDHI stays in the hot path.
 - Profile (12 val patches, v3): 161 ms/patch = GUDHI persistence 73 + merge-level reconstructions 28 + alignment 15 + bottleneck 10.
+
+### Track C Rung 1b (2026-10-21; real data, run once; `docs/REAL_DATA_RUNG1B.md`)
+- Candidates (prereg Part A 4044b41): C1 leave-one-out calibration guard, C2 template clamp [q0.5, q99.5], C3 alignment
+  bound 12 px. Synthetic Manhattan val: 0/1,152 verdicts changed, shift stability 89.2% unchanged, guard 0/175 triggers
+  -> all kept (harmless on synthetic; benefit not testable there). Frozen in results/real/rung1b/val/decisions.json.
+- Real repeat (Part B 8da0f71): fresh held-out film tiles KILLER 0/68 (17 images), coverage 100%: MET (film only).
+  Rung 1 tiles: KILLER 13.3% [5.7, 23.6], coverage 73.4%: NOT MET. G29 KILLER 70.7% -> 18.1% (paired, 116 tiles; all from C2),
+  but NEAR_MISS 25% -> 57%. G01: guard flags the sign-unstable calibration (LOO contrasts -33/-13/+0.8) -> UNVERIFIED.
+- Surprise: the clamp mostly converts false killers into false near-misses; the near-miss gate (e*) is now the main
+  real-data cost. Fresh set is film only (wells sit under the burned-in cross) -> does not test rims.
