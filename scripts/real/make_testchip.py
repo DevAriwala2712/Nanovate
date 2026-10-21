@@ -7,6 +7,7 @@ not match its intended class. Usage: python scripts/real/make_testchip.py [--pre
 from __future__ import annotations
 
 import argparse
+import datetime
 import dataclasses
 import json
 import sys
@@ -17,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 import pandas as pd  # noqa: E402
 
 from nanovate.real.testchip import EXPECTED, PRESETS, ChipCfg, build_chip, cfg_dict, defect_rows, raster  # noqa: E402
+
+GDS_TIMESTAMP = datetime.datetime(2026, 10, 21)
+
 
 def preview(lib, out: Path, c: ChipCfg, df: pd.DataFrame) -> None:
     import matplotlib
@@ -69,7 +73,7 @@ def main() -> None:
     bad = d[[EXPECTED[t][1] != (b0, b1) for t, b0, b1 in zip(d.defect_type, d.design_d_beta0, d.design_d_beta1)]]
     if len(bad):
         sys.exit(f"topology check failed:\n{bad[['block_id', 'defect_type', 'size_frac_w', 'design_d_beta0', 'design_d_beta1']]}")
-    lib.write_gds(out / "nanovate_testchip.gds")
+    lib.write_gds(out / "nanovate_testchip.gds", timestamp=GDS_TIMESTAMP)   # fixed: same config -> identical bytes
     df.to_csv(out / "defect_map.csv", index=False)
     (out / "config.json").write_text(json.dumps(dict(preset=a.preset, data="DESIGN (no fabrication yet)", **cfg_dict(c)), indent=2))
     preview(lib, out / "preview.png", c, df)
