@@ -40,6 +40,35 @@ no version of the verifier has ever scored.
 
 No other change is allowed. If every candidate fails, the real repeat is not run, and that is reported.
 
-## Part B: the real repeat
+## Part B: the real repeat (written after Part A's result, committed before the real run)
 
-*(added and committed after Part A's result, before the real run)*
+**Frozen variant.**
+- **Primary:** frozen v3 plus the components Part A accepted, as recorded in `results/real/rung1b/val/decisions.json`.
+- **Pre-declared secondary:** the same without the C1 guard. It shows what the C2/C3 changes alone do to the verdicts.
+
+Same v3 thresholds and event rule, Window(256, 16), native pixels only. Arm B is dropped, because it stayed 100% KILLER on G01 in Rung 1 and adds nothing.
+
+**Populations (`python -m experiments.real_rung1b --run`):**
+
+| Population | Images / tiles | Reference | Calibration (Module 1 stand-in scribe patches) |
+|---|---|---|---|
+| **orig** | the Rung 1 arm C tiles exactly (G29 + G01: 174 + 42 tiles; primary = 158 clean overlay-free tiles in 32 images); paired tile by tile with Rung 1's verdicts | the Rung 1 FITTED references, unchanged | the Rung 1 calibration tiles, unchanged |
+| **fresh (held out)** | the 20 Gla_01 single-well top views (doi:10.5281/zenodo.8060099, CC-BY-4.0; 1.35–3.37 nm/px, 10 kV), excluded from Rung 1 and never scored by any version. 17 evaluation images x 6 tiles = 102 tiles; primary = the **68 overlay-free tiles** (film only: each field is centred on its well, under the burned-in centre cross) | one disc of the **design** diameter (file name) at the well centre. The position comes from the dark blob nearest the image centre, because each field is centred on its well | images 0, 10, 19 of the sorted list (`z110_d_100_21`, `z50_d_220_10`, `z80_d_280_20`). For each, the 256 x 256 window centred on the well. **Disclosed:** these windows contain the centre-cross pixels (about 60 of 65,536, grey 226), because no well-containing window avoids them |
+
+**Overlay.** For the 512 x 768 Gla_01 frames, the overlay is the 31 x 31 box at rows 241–271, cols 369–399. That is the same position as G29's R ≠ B cross, and the grayscale frames carry the cross at grey 226 inside it. Tiles touching the box are reported separately, as in Rung 1.
+
+**Labels.** `results/real/rung1b/fresh_clean_labels.csv` holds a visual check by the assistant before any run on this set: all 20 clean (one well, no extra hole). Debris, contamination bands and smudges are nuisance. The orig labels are Rung 1's.
+
+**Metrics and targets** (bootstrap over images, 1000 resamples, seed 0; n tiles and n images beside every number):
+
+| Metric | Target | Met if |
+|---|---|---|
+| **KILLER on clean overlay-free tiles** (UNVERIFIED_CALIBRATION counts as not KILLER) | ≤ 5% | point estimate ≤ 5% **and** coverage ≥ 80% |
+| **Coverage** = verified fraction of those tiles | ≥ 80% | (part of the line above) |
+| KILLER among verified tiles | none | reported |
+| KILLER if the guard were off (the unguarded verdict) | none | reported |
+| Paired with Rung 1 (orig only): tiles whose verdict changed | none | reported |
+
+The target is judged separately on **orig** and **fresh**. Fresh is the less contaminated test, so if the two disagree, fresh is the headline.
+
+**What would make this not a pass even if the numbers meet the target:** none of it is decided after the run. Reporting includes both variants and every population. A low KILLER rate reached only through abstention fails the coverage condition and is reported as "abstained", not as "no false alarms".
