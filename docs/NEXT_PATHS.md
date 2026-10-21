@@ -131,8 +131,8 @@ At a fixed threshold, Δβ₀ and Δβ₁ do not need a persistence computation:
 - β₁ from the Euler characteristic, β₁ = β₀ − χ in 2D, and χ is a sum of local 2×2 pixel-pattern counts (Gray's method): fully local, GPU- or even FPGA-friendly.
 - Full persistence (bottleneck distance) is then needed only for **near-miss candidates**: Δβ = 0 and SDF energy above e*.
 
-- [ ] Implement the fast Betti path; **acceptance test:** identical Δβ to GUDHI on every validation patch (connectivity convention must match GUDHI's cubical complex).
-- [ ] Route only near-miss candidates to GUDHI.
+- [x] Implement the fast Betti path; **acceptance test:** identical Δβ to GUDHI on every validation patch (connectivity convention must match GUDHI's cubical complex). *2026-10-21: **failed, kill condition applied** (`docs/B2_FAST_BETTI.md`): best single level identical on 382/576 val patches (66%), because Module 4 counts bars with lifetime ≥ τ over all levels, not one superlevel set; 27x faster (2.4 vs 64 ms). Code kept, off by default.*
+- [ ] ~~Route only near-miss candidates to GUDHI.~~ Moot: the fast path cannot replace GUDHI for any patch. Exact options left: elder-rule union-find (needs a compiled dependency, ask first) or exact speed-ups of the reconstruction / bottleneck steps.
 - [ ] Combine with the B2 cascade. Report latency and throughput, CPU and (if available) GPU.
 
 **Targets:** Module 4 under 5 ms per patch on CPU; whole pipeline under 25 ms per patch; zero verdict changes vs v2 on val.
@@ -222,7 +222,7 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 |---|---|---|
 | Stack path (Module 2) as default | Phase 1 | < 2% of verdicts changed, or no significant F1 gain |
 | Global τ | Phase 2 | local rule beats it on val |
-| Full persistent homology in the hot path | B2 | fast Betti path matches GUDHI exactly |
+| Full persistent homology in the hot path | B2 | fast Betti path matches GUDHI exactly (**tested 2026-10-21: does not match, 66%; GUDHI stays**) |
 | Pseudo-label hybrid | B1 | never beats verifier alone |
 | Calibrated-simulation training | B1 | worse than Manhattan CNN on new layer |
 | Our jitter fixes | B3 | industry-style correction already meets the target |

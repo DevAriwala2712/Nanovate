@@ -575,3 +575,13 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
 - Deliberately includes sizes that will not print (25 nm defects, 10-30 nm near-miss gaps at w = 100 nm); the confirmation
   image set decides what printed (Rung 2 kill condition). `docs/LAB_REQUEST.md`: email draft, attachments, what the facility
   must confirm, ~460 images, ~1 day SEM + ~half a day fabrication.
+
+### B2 fast Betti path (2026-10-21; synthetic, Manhattan val only; `docs/B2_FAST_BETTI.md`)
+- `modules/fast_betti.py` (off by default, not called by the pipeline): components + Euler characteristic at one level,
+  GUDHI's connectivity convention and Module 4's v2 splices; exact on binary fields (tests vs GUDHI and betti_binary).
+- Acceptance (pre-registered in NEXT_PATHS: identical Delta-beta on every val patch): **FAILED**. Level 0.5 (fixed a priori)
+  382/576 identical (66.3%), same verdict class 424/576; no level 0.05-0.95 passes (best is 0.5). GUDHI cross-check vs
+  verify_patch: 576/576 equal. Speed 2.4 vs 64.2 ms median (~27x).
+- Surprise: the B2 premise was wrong. Module 4 counts bars with lifetime >= tau over all levels, not the Betti numbers of a
+  single superlevel set; they coincide only on binary fields. Kill condition applied: GUDHI stays in the hot path.
+- Profile (12 val patches, v3): 161 ms/patch = GUDHI persistence 73 + merge-level reconstructions 28 + alignment 15 + bottleneck 10.
