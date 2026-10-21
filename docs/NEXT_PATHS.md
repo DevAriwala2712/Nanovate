@@ -186,7 +186,10 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ### Rung 2: our own test chip with deliberate defects (real recall, exact ground truth)
 
-- [ ] GDS test layout (line/space and via-array blocks, clean control blocks, bridges / opens / notches at a range of known sizes) + defect map CSV.
+*Status (2026-10-21): design done (`src/nanovate/real/testchip.py`, `scripts/real/make_testchip.py` → `results/real/testchip/<preset>/`: GDS, defect map, previews; every block's design Δβ checked by tests). Lab request drafted in `docs/LAB_REQUEST.md`, **not sent**.*
+
+- [x] GDS test layout (line/space and via-array blocks, clean control blocks, bridges / opens / notches at a range of known sizes) + defect map CSV.
+- [ ] Send `docs/LAB_REQUEST.md` (user) and agree on feature size, polarity and imaging time with the facility.
 - [ ] Fabricate and image at a university nanofab / microscope facility (several doses / dwell times, a range of pixel sizes).
 - [ ] Measure recall and false-alarm rate per defect type and size against the design, with true CAD this time.
 

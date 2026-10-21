@@ -562,3 +562,16 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
   (3) real G29 holes are ~40 nm wider than the design diameter; mismatch correlates with KILLER (Spearman 0.43, 29 images);
   (4) the synthetic-style calibration metric hid the failure; report contrast-relative error from now on.
 - Next: Stop Point 2 (user decision). Any fix must be chosen on synthetic val, then this run repeated once.
+
+### Track C Rung 2 design (2026-10-21): test chip + lab request (nothing sent)
+- `src/nanovate/real/testchip.py` + `scripts/real/make_testchip.py`: GDS (1 nm database unit; layer 1 pattern, 2 labels/crosses,
+  63 doc-only outlines) and `defect_map.csv` for presets ebeam (w = 100 nm, default), ebeam_aggressive (50 nm), optical (1 um).
+  Per replicate 32 test blocks (line/space: clean x4, bridge x4, cut x4, particle x3, notch x3, filament x3; via array: clean x3,
+  via bridge x4, missing via, extra square x3), 3 shuffled replicates + 3 calibration features = 99 blocks, 23 x 41 um at w = 100 nm.
+- Ground truth from the drawn geometry: every block's Delta-beta vs its clean twin is computed and must match its class
+  (script fails otherwise; `tests/test_real_testchip.py` at all three presets).
+- Surprise: a missing via lowers beta0, so Module 4's ladder calls it KILLER_BRIDGE; the defect map keeps the semantic name
+  and the rule verdict side by side.
+- Deliberately includes sizes that will not print (25 nm defects, 10-30 nm near-miss gaps at w = 100 nm); the confirmation
+  image set decides what printed (Rung 2 kill condition). `docs/LAB_REQUEST.md`: email draft, attachments, what the facility
+  must confirm, ~460 images, ~1 day SEM + ~half a day fabrication.

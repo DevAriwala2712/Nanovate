@@ -1,0 +1,57 @@
+{
+  "preset": "ebeam_aggressive",
+  "data": "DESIGN (no fabrication yet)",
+  "w": 50.0,
+  "block_pitches": 10,
+  "block_gap_frac": 0.5,
+  "reps": 3,
+  "seed": 0,
+  "bridge": [
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "open_": [
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "particle": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "notch": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "filament": [
+    0.1,
+    0.2,
+    0.3
+  ],
+  "via_bridge": [
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "via_extra": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "extra_clean_ls": 3,
+  "extra_clean_via": 2,
+  "pitch_nm": 100.0,
+  "block_nm": 1000.0,
+  "gap_nm": 500.0,
+  "layers": {
+    "pattern": 1,
+    "nav": 2,
+    "doc_do_not_expose": 63
+  }
+}
