@@ -181,6 +181,8 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 *Rung 1c (2026-10-22, `docs/REAL_DATA_RUNG1C.md`): near-miss gate re-selected with synthetic edge-halo cells (moved < 10%). One repeat: fresh film NEAR_MISS 8.8% → 4.4% (all three targets met, film only); orig G29 NEAR_MISS 57% → 48% (**not met**). The halo surrogate does not reproduce real rims; the remaining flags point to a systematic CD offset (real holes ~40 nm wider than design). Next: a CD-offset term in the testbed, or stop and wait for Rung 2.*
 
+*Rung 1d (2026-10-23, `docs/REAL_DATA_RUNG1D.md`): testbed CD offset added; CD-corrected SDF energy **rejected on val** (pooled near-miss recall 37.5% vs 55.0%; its bias estimate reads wide halos as wider conductor). Adopted gate shifted slightly lower; real NEAR_MISS rose (fresh 4.4% → 7.4%, **not met**; G29 48% → 56%). Post-hoc: the estimator finds −24 nm on G29, matching the measured offset. Recommendation: stop tuning on these images; Rung 2 next; only remaining synthetic candidate is a joint bloom-width + CD estimate.*
+
 - [x] Public, licence-clear real SEM images of simple periodic structures (line/space gratings, contact/via arrays, calibration specimens) with a stated pixel size. Download script + manifest only; no images committed.
 - [x] Reference layout: no CAD exists, so fit a parametric layout (pitch, line width, angle, offset) on calibration regions only and render it. Labelled everywhere as a **FITTED reference, not CAD**: a fit can absorb a real defect.
 - [x] Module 1 stand-in scribe patches: 3 named regions from calibration images.

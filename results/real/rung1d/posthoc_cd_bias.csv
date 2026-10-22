@@ -1,0 +1,4 @@
+group,b_hat_px,b_hat_nm,px_nm_mean,note
+G29,-4.5,-23.895825000000002,5.310183333333334,"POST-HOC diagnostic, changes no verdict"
+G01,-3.5,-39.34455,11.241299999999999,"POST-HOC diagnostic, changes no verdict"
+FRESH,-4.5,-10.79166,2.398146666666667,"POST-HOC diagnostic, changes no verdict"

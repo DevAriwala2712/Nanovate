@@ -604,3 +604,14 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
   Orig NEAR_MISS 35.4% [21.4, 52.3] (G29 56.9% -> 48.3%): NOT met. KILLER/UNVERIFIED identical to 1b on every tile (verified).
 - Surprise: the synthetic halo is absorbed by Module 1 calibration, so it is a poor surrogate for real rims. Remaining
   G29 flags most likely come from the systematic CD offset (real holes ~40 nm wider than design) the testbed never models.
+
+### Track C Rung 1d (2026-10-23; real data, run once; `docs/REAL_DATA_RUNG1D.md`)
+- Testbed CD offset (`testbed/cdbias.py`, b = 0 bit-identical) + opt-in CD-corrected SDF energy (per-layer bias from scribe).
+  Synthetic val: bias recovered (-3/-1.5/+1.5/+3 nm -> -3.5/-1.5/+1.5/+3.0 px) but +2..3 px in halo cells with no offset;
+  CD-corrected variant rejected (pooled held-out near-miss recall 37.5% vs 55.0%). Adopted V0 gate d* 0.080, e* 2.535, z* 5.33.
+  273/207 selection/held-out patches excluded because the offset itself changed topology.
+- Real: fresh NEAR_MISS 7.4% [0, 14.7] (1c 4.4%): NOT met (regression); orig 41.1% (G29 56.0%). KILLER/UNVERIFIED identical
+  to 1c; only NUISANCE -> NEAR_MISS moves (9 orig, 2 fresh), as predicted before the run.
+- Post-hoc (pre-declared): the estimator gives G29 b_hat -24 nm, matching the ~40 nm diameter offset measured in Rung 1.
+- Surprise: three rungs show synthetic stressors are absorbed by Module 1 calibration and never stress the gate; the
+  testbed, not the threshold, is the limit. Recommendation: stop tuning on these real images; Rung 2 next.
