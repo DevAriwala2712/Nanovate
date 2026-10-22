@@ -595,3 +595,12 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
   but NEAR_MISS 25% -> 57%. G01: guard flags the sign-unstable calibration (LOO contrasts -33/-13/+0.8) -> UNVERIFIED.
 - Surprise: the clamp mostly converts false killers into false near-misses; the near-miss gate (e*) is now the main
   real-data cost. Fresh set is film only (wells sit under the burned-in cross) -> does not test rims.
+
+### Track C Rung 1c (2026-10-22; real data, run once; `docs/REAL_DATA_RUNG1C.md`)
+- Near-miss gate re-selected on synthetic Manhattan val with 4 edge-halo stress cells (sigma_edge 3/5 nm x a2 0.9/1.8):
+  d* 0.078 -> 0.085, e* 2.575 -> 2.545, z* 5.46 -> 5.37; control without halo cells reproduces v3 exactly; held-out val
+  nuisance NEAR_MISS 0-3% in every cell, near-miss recall unchanged (62.5% nominal). Expected small real effect, stated before the run.
+- Real: fresh film NEAR_MISS 4.4% [0, 10.3] (68 tiles, 17 images; 1b: 8.8%): met (point), all three targets met on fresh.
+  Orig NEAR_MISS 35.4% [21.4, 52.3] (G29 56.9% -> 48.3%): NOT met. KILLER/UNVERIFIED identical to 1b on every tile (verified).
+- Surprise: the synthetic halo is absorbed by Module 1 calibration, so it is a poor surrogate for real rims. Remaining
+  G29 flags most likely come from the systematic CD offset (real holes ~40 nm wider than design) the testbed never models.

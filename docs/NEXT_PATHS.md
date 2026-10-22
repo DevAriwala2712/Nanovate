@@ -179,6 +179,8 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 *Rung 1b (2026-10-21, `docs/REAL_DATA_RUNG1B.md`): calibration guard + template clamp + bounded alignment, chosen on synthetic val (0 val verdicts changed), one repeat. Held-out fresh film tiles: KILLER 0/68, coverage 100% (met, film only). Same Rung 1 tiles: KILLER 13.3% [5.7, 23.6], coverage 73% (**not met**); G29 70.7% → 18.1% KILLER but NEAR_MISS 25% → 57%; G01 now UNVERIFIED (guard). Next: the near-miss gate at real rims; Rung 2 for recall.*
 
+*Rung 1c (2026-10-22, `docs/REAL_DATA_RUNG1C.md`): near-miss gate re-selected with synthetic edge-halo cells (moved < 10%). One repeat: fresh film NEAR_MISS 8.8% → 4.4% (all three targets met, film only); orig G29 NEAR_MISS 57% → 48% (**not met**). The halo surrogate does not reproduce real rims; the remaining flags point to a systematic CD offset (real holes ~40 nm wider than design). Next: a CD-offset term in the testbed, or stop and wait for Rung 2.*
+
 - [x] Public, licence-clear real SEM images of simple periodic structures (line/space gratings, contact/via arrays, calibration specimens) with a stated pixel size. Download script + manifest only; no images committed.
 - [x] Reference layout: no CAD exists, so fit a parametric layout (pitch, line width, angle, offset) on calibration regions only and render it. Labelled everywhere as a **FITTED reference, not CAD**: a fit can absorb a real defect.
 - [x] Module 1 stand-in scribe patches: 3 named regions from calibration images.
