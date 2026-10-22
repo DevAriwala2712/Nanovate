@@ -1,5 +1,7 @@
 """Track C Rung 1c: ONE real repeat with the near-miss gate re-selected under synthetic edge-halo cells (REAL DATA).
 
+Also reused by real_rung1d (summarise).
+
 Same populations, references, calibrations and labels as Rung 1b (experiments/real_rung1b.py); the only change is
 (d*, e*, z*) from results/real/rung1c/val/decisions.json. Paired tile by tile with Rung 1b. Pre-registration:
 docs/REAL_DATA_RUNG1C_PREREG.md. Refuses to run unless committed, or twice. Usage: python -m experiments.real_rung1c --run

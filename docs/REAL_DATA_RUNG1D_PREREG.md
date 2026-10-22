@@ -33,6 +33,27 @@ code. The committed Rung 1b/1c `tiles.csv` files are not used to evaluate candid
 
 Frozen to `results/real/rung1d/val/decisions.json`.
 
-## Part B: the real repeat
+## Part A result (synthetic; `results/real/rung1d/val/`)
 
-*(added after Part A's result, committed before the real run)*
+**Decision: V0 is adopted, and the CD-corrected energy (V1) is rejected.** Pooled held-out near-miss recall (467 notch/filament patches in 9 cells): V0 55.0% [50.1, 60.0], V1 37.5% [33.6, 42.0].
+
+| | d* | e* | z* |
+|---|---|---|---|
+| Rung 1c gate | 0.0846 | 2.545 | 5.374 |
+| V0 (adopted; selected with the CD cells added) | 0.0798 | 2.535 | 5.326 |
+| V1 (not adopted) | 0.0798 | 2.629 | 4.906 |
+
+- **Bias estimate:** accurate in the CD cells (true −3 / −1.5 / +1.5 / +3 nm → estimated −3.5 / −1.5 / +1.5 / +3.0 px). In the **halo** cells (no CD offset) it returns +2 to +3 px, reading a wide bloom as wider conductor. As a result, V1 raises held-out nuisance NEAR_MISS there (H1 6%, H3 9%, H4 12.5%, n = 32 each). That is why V1 loses.
+- **The synthetic CD offset does not stress V0's gate either:** held-out nuisance NEAR_MISS is 0% in all four CD cells. Module 1, calibrated on scribe patches with the same offset, absorbs it into the template.
+- **Cost on synthetic near-misses:** recall in the CD cells is low under both variants (V0: −3 nm 7%, +1.5 nm 16%, +3 nm 0%).
+- **Excluded:** 273 selection and 207 held-out patches, where the offset itself changed the topology (mostly notch/filament/particle at ±3 nm on 14 nm features).
+- The guard never triggered.
+
+**Reading, written before the real run.** Neither variant gives a new mechanism for real rims. The adopted change is only another small shift of the gate (e* 2.545 → 2.535, z* 5.374 → 5.326; d* 0.0846 → 0.0798). Because e* and z* got slightly *lower*, real NEAR_MISS may stay flat or rise slightly.
+
+## Part B: the real repeat (written after Part A's result, committed before the real run)
+
+- **Pipeline:** Rung 1b robust config (guard, clamp, bounded alignment; `cd_correct` **off**), with (d*, e*, z*) = V0's values above. KILLER and UNVERIFIED verdicts are identical to Rungs 1b/1c by construction.
+- **Populations, references, calibrations, labels:** exactly Rung 1b/1c's. `python -m experiments.real_rung1d --run`, once; paired tile by tile with Rung 1c.
+- **Target (unchanged from 1c):** NEAR_MISS on clean overlay-free tiles ≤ 5%, judged separately on orig and fresh. Also reported: KILLER (≤ 5%), coverage (≥ 80%), NUISANCE. 95% CIs come from a bootstrap over images (1000 resamples, seed 0).
+- **Diagnostic, computed after the run and labelled post-hoc:** the per-layer bias b̂ that V1 *would* have estimated on the real calibration tiles. It is reported only to see whether the real offset is visible to the estimator. It changes no verdict.

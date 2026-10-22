@@ -118,7 +118,8 @@ def run(groups: list[dict], rcfgs: dict, labels: dict, pc, rc) -> tuple[pd.DataF
         for vname, rcfg in rcfgs.items():
             rcal = calibrate_robust(P, rcfg)
             cals.append(dict(variant=vname, group=g["name"], reliable=rcal.reliable, contrast=rcal.contrast,
-                             loo=json.dumps(rcal.loo_contrasts), clamp_range=json.dumps(rcal.clamp_range), calib_ms=rcal.cal.timing_ms))
+                             loo=json.dumps(rcal.loo_contrasts), clamp_range=json.dumps(rcal.clamp_range), calib_ms=rcal.cal.timing_ms,
+                             cd_bias_px=rcal.cd_bias))
             for k, rc_ in g["eval_tiles"]:
                 im = g["images"][k]
                 cad, img = crop(cad_of[k], rc_), crop(im.img, rc_)
@@ -132,6 +133,7 @@ def run(groups: list[dict], rcfgs: dict, labels: dict, pc, rc) -> tuple[pd.DataF
                                  killer=str(res.verdict).startswith("KILLER"), killer_unguarded=str(z["verdict_unguarded"]).startswith("KILLER"),
                                  d_beta0=z["delta_betti"][0], d_beta1=z["delta_betti"][1], n_bridge_events=z["n_bridge_events"],
                                  n_open_events=z["n_open_events"], bottleneck=z["bottleneck_max"], max_sdf_energy=z["max_sdf_energy"],
+                                 max_sdf_energy_design=z.get("max_sdf_energy_design"), peak_z=z["peak_z"],
                                  align_rejected=z["align_rejected"], m3_shift_px=float(np.hypot(*res.shift)), ms_total=ms))
     return pd.DataFrame(rows), pd.DataFrame(cals)
 

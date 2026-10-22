@@ -32,6 +32,8 @@ class RobustCfg:
     guard_rel_spread: float = 0.5                # C1: max |c_loo - c| / |c|
     clamp: tuple[float, float] | None = None     # C2: percentiles, e.g. (0.5, 99.5)
     max_shift: float | None = None               # C3: px per axis, e.g. 12.0
+    cd_correct: bool = False                     # Rung 1d: SDF energy against CAD grown by the scribe-estimated CD bias
+    cd_grid: tuple[float, float, float] = (-8.0, 8.0, 0.5)   # px: (min, max, step) of the bias grid
 
     def to_dict(self) -> dict:
         return dataclasses.asdict(self)
@@ -55,6 +57,8 @@ class RobustCalibration:
     contrast: float
     loo_contrasts: tuple
     clamp_range: tuple | None
+    cd_bias: float = 0.0                         # px, scribe-estimated (0 when cd_correct is off)
+    cal_cd: Calibration | None = None            # Module 1 refit on grow(CAD, cd_bias)
 
 
 def calibrate_robust(patches: list[tuple[np.ndarray, np.ndarray]], rcfg: RobustCfg, **kw) -> RobustCalibration:
@@ -71,8 +75,34 @@ def calibrate_robust(patches: list[tuple[np.ndarray, np.ndarray]], rcfg: RobustC
     if rcfg.clamp is not None:
         ys = np.concatenate([np.asarray(im, float).ravel() for _, im in patches])
         rng = (float(np.percentile(ys, rcfg.clamp[0])), float(np.percentile(ys, rcfg.clamp[1])))
-        cal = ClampedCalibration(**{f.name: getattr(cal, f.name) for f in dataclasses.fields(Calibration)}, lo=rng[0], hi=rng[1])
-    return RobustCalibration(cal, reliable, float(c), tuple(loo), rng)
+    clampit = lambda c: c if rng is None else ClampedCalibration(  # noqa: E731
+        **{f.name: getattr(c, f.name) for f in dataclasses.fields(Calibration)}, lo=rng[0], hi=rng[1])
+    bias, cal_cd = 0.0, None
+    if rcfg.cd_correct:
+        bias, cal_cd = estimate_cd_bias(patches, rcfg.cd_grid, **kw)
+        cal_cd = clampit(cal_cd)
+    return RobustCalibration(clampit(cal), reliable, float(c), tuple(loo), rng, float(bias), cal_cd)
+
+
+def estimate_cd_bias(patches, grid: tuple[float, float, float], **kw) -> tuple[float, Calibration]:
+    """Per-layer CD bias (px) from the scribe patches only: the grow(CAD, b) whose Module-1 refit has the smallest
+    registered residual sum of squares; ties -> smaller |b|. Returns (b_hat, calibration refit at b_hat)."""
+    from scipy import ndimage as ndi
+    from .testbed.cdbias import grow
+    lo, hi, st = grid
+    bs = np.round(np.arange(lo, hi + st / 2, st), 6)
+    bs = sorted(bs, key=lambda b: (abs(b), b))
+    best = None
+    for b in bs:
+        pb = [(grow(np.asarray(c) > 0.5, float(b)).astype(float), y) for c, y in patches]
+        cb = calibrate(pb, **kw)
+        sse = 0.0
+        for (cc, y), d in zip(pb, cb.shifts):
+            T = ndi.shift(cb.predict(cc > 0.5), d, order=1, mode="nearest")
+            sse += float(((np.asarray(y, float) - T) ** 2).sum())
+        if best is None or sse < best[0] - 1e-9:
+            best = (sse, float(b), cb)
+    return best[1], best[2]
 
 
 def verify_patch_robust(image: np.ndarray, cad: np.ndarray, rcal: RobustCalibration, win: Window, pc: PipelineCfg,
@@ -89,6 +119,10 @@ def verify_patch_robust(image: np.ndarray, cad: np.ndarray, rcal: RobustCalibrat
     t["align"] = (time.perf_counter() - t0) * 1e3
     t0 = time.perf_counter()
     emap = energy_map(image, cad, cal, win, pc.gamma, pc.cap, aligned=aligned)
+    energy_design = float(emap.max())
+    if rcfg.cd_correct and rcal.cal_cd is not None:
+        from .testbed.cdbias import grow
+        emap = energy_map(image, grow(cad, rcal.cd_bias), rcal.cal_cd, win, pc.gamma, pc.cap, aligned=aligned)
     energy, pz = float(emap.max()), peak_z(emap)
     t["sdf_energy"] = (time.perf_counter() - t0) * 1e3
     t0 = time.perf_counter()
@@ -112,5 +146,6 @@ def verify_patch_robust(image: np.ndarray, cad: np.ndarray, rcal: RobustCalibrat
                   n_open_events=len(events["open"]), delta_betti=v2_delta_beta(ev, pc.tau), bottleneck_max=bott,
                   max_sdf_energy=energy, peak_z=pz, singleton=True, align_rejected=align_rejected,
                   calibration_reliable=rcal.reliable, contrast=rcal.contrast, loo_contrasts=list(rcal.loo_contrasts),
-                  clamp_range=rcal.clamp_range, robust_cfg=rcfg.to_dict(), rule_cfg=rc.to_dict())
+                  clamp_range=rcal.clamp_range, cd_bias=rcal.cd_bias, max_sdf_energy_design=energy_design,
+                  robust_cfg=rcfg.to_dict(), rule_cfg=rc.to_dict())
     return PipelineResult(verdict, reason, True, shift, t)
