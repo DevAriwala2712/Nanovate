@@ -1,0 +1,31 @@
+thresholds,halo,metric,mean,ci_lo,ci_hi,n
+v3/1b thresholds,nominal,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+v3/1b thresholds,nominal,near-miss recall (notch+filament),0.625,0.5,0.734375,64
+v3/1b thresholds,H1,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+v3/1b thresholds,H1,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+v3/1b thresholds,H2,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+v3/1b thresholds,H2,near-miss recall (notch+filament),0.46875,0.359375,0.59375,64
+v3/1b thresholds,H3,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+v3/1b thresholds,H3,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+v3/1b thresholds,H4,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+v3/1b thresholds,H4,near-miss recall (notch+filament),0.6875,0.578125,0.796875,64
+control re-selection (no halo cells),nominal,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+control re-selection (no halo cells),nominal,near-miss recall (notch+filament),0.625,0.5,0.734375,64
+control re-selection (no halo cells),H1,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+control re-selection (no halo cells),H1,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+control re-selection (no halo cells),H2,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+control re-selection (no halo cells),H2,near-miss recall (notch+filament),0.46875,0.359375,0.59375,64
+control re-selection (no halo cells),H3,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+control re-selection (no halo cells),H3,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+control re-selection (no halo cells),H4,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+control re-selection (no halo cells),H4,near-miss recall (notch+filament),0.6875,0.578125,0.796875,64
+Rung 1c (with halo cells),nominal,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+Rung 1c (with halo cells),nominal,near-miss recall (notch+filament),0.625,0.5,0.734375,64
+Rung 1c (with halo cells),H1,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+Rung 1c (with halo cells),H1,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+Rung 1c (with halo cells),H2,nuisance NEAR_MISS rate,0.03125,0.0,0.09375,32
+Rung 1c (with halo cells),H2,near-miss recall (notch+filament),0.484375,0.374609375,0.59375,64
+Rung 1c (with halo cells),H3,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+Rung 1c (with halo cells),H3,near-miss recall (notch+filament),0.75,0.640625,0.859375,64
+Rung 1c (with halo cells),H4,nuisance NEAR_MISS rate,0.0,0.0,0.0,32
+Rung 1c (with halo cells),H4,near-miss recall (notch+filament),0.6875,0.578125,0.796875,64

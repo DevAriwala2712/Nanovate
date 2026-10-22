@@ -109,3 +109,14 @@ def test_real_rung1b_run_and_summary_smoke_on_synthetic_lattice():
     assert len(t) == 24 and t[t.population == "fresh"].overlay.sum() == 4 and len(pd.concat([c1, c2])) == 4
     s = R.summarise(t)
     assert {"coverage (verified fraction)", "KILLER among verified clean tiles"} <= set(s.metric)
+
+
+def test_real_rung1c_summary_counts_near_miss_on_clean_overlay_free_tiles():
+    import pandas as pd
+    from experiments import real_rung1c as C
+    t = pd.DataFrame(dict(population="orig", group="G29", image_id=["a", "a", "b", "b"], tile=["0,0", "0,1", "0,0", "0,1"],
+                          clean=True, overlay=[False, False, False, True], verdict=["NEAR_MISS", "NUISANCE", "KILLER_BRIDGE", "NEAR_MISS"],
+                          killer=[False, False, True, False], verified=True))
+    s = C.summarise(t).set_index(["population", "metric"])
+    assert s.loc[("orig", "NEAR_MISS on clean tiles"), "mean"] == pytest.approx(1 / 3)
+    assert s.loc[("orig", "KILLER on clean tiles"), "n_tiles"] == 3

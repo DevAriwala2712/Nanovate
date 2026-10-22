@@ -45,6 +45,30 @@ The halo cells run at nominal LER 1 nm and grain 15%, at doses 20/50/200. The sc
 
 Frozen to `results/real/rung1c/val/decisions.json`.
 
-## Part B: the real repeat
+## Part A result (synthetic; `results/real/rung1c/val/`)
 
-*(added after Part A's result, committed before the real run)*
+| | d* | e* | z* |
+|---|---|---|---|
+| Previous (v3 / 1b) | 0.0780 | 2.575 | 5.461 |
+| Control: re-selected without halo cells, 1b base | 0.0780 | 2.575 | 5.461 (identical, as expected) |
+| **Adopted: re-selected with halo cells H1–H4** | **0.0846** | **2.545** | **5.374** |
+
+- **Feasible.** The guard never triggered on the 3,744 selection patches.
+- **Held-out val (layouts 8–23, dose 50, n = 32 nuisance and 64 notch/filament per cell):**
+  - nuisance NEAR_MISS is 0–3% in every cell (nominal and H1–H4), under both old and new thresholds;
+  - near-miss recall at nominal is 62.5% for both;
+  - H2 is 46.9% → 48.4%.
+- **Reading, written before the real run.** The synthetic halo barely stresses the gate. Module 1, calibrated on halo-rendered scribe patches, absorbs a symmetric wider bloom. So the testbed halo does not reproduce whatever drives the real rim NEAR_MISS flags. The **expected real effect is small**. A plausible untested driver is the ~40 nm design-vs-real hole-diameter offset (a systematic CD bias), which the testbed never generates.
+
+## Part B: the real repeat (written after Part A's result, committed before the real run)
+
+- **Pipeline:** Rung 1b frozen (guard, clamp, bounded alignment), with (d*, e*, z*) replaced by the adopted values above. Nothing else changes. KILLER and UNVERIFIED verdicts are therefore identical to Rung 1b by construction; only NEAR_MISS vs NUISANCE can move.
+- **Populations, references, calibrations, labels:** exactly Rung 1b's (orig: 158 clean overlay-free tiles in 32 images; fresh held-out: 68 film-only tiles in 17 images). `python -m experiments.real_rung1c --run`, once; paired tile by tile with Rung 1b.
+
+**Target (new, pre-registered here):**
+
+| Metric | Target | Notes |
+|---|---|---|
+| **NEAR_MISS on clean overlay-free tiles** | **≤ 5%** (the val near-miss budget) | judged separately on orig and fresh. Rung 1b values for reference: orig G29 56.9%, fresh 8.8% |
+
+KILLER, coverage and NUISANCE are reported again, with the Rung 1b targets unchanged (KILLER ≤ 5% and coverage ≥ 80%). 95% CIs come from a bootstrap over images (1000 resamples, seed 0).
