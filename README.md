@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-2a78d6?style=flat-square">
-  <img alt="Training-free" src="https://img.shields.io/badge/labels%20needed-none-1baf7a?style=flat-square">
-  <img alt="Synthetic-data prototype" src="https://img.shields.io/badge/status-synthetic--data%20prototype-eda100?style=flat-square">
-  <img alt="Pre-registered" src="https://img.shields.io/badge/targets-pre--registered-59636e?style=flat-square">
+  <a href="#quickstart"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-2a78d6?style=flat-square"></a>
+  <a href="#why-use-this-the-day-0-case"><img alt="Labels needed: none" src="https://img.shields.io/badge/labels%20needed-none-1baf7a?style=flat-square"></a>
+  <a href="#limitations"><img alt="Status: synthetic-data prototype" src="https://img.shields.io/badge/status-synthetic--data%20prototype-eda100?style=flat-square"></a>
+  <a href="#detailed-results"><img alt="Targets: pre-registered" src="https://img.shields.io/badge/targets-pre--registered-59636e?style=flat-square"></a>
 </p>
 
 <p align="center">
