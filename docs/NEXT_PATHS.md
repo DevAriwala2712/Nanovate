@@ -203,7 +203,7 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ### Rung 3: public SEM defect datasets via reference-die mode
 
-- [ ] Uses Phase 4's reference-die mode (clean neighbour image as the reference instead of CAD). Only after Phase 4's synthetic check passes its kill condition.
+- [ ] Uses Phase 4's reference-die mode (clean neighbour image as the reference instead of CAD). Only after Phase 4's synthetic check passes its kill condition. *Phase 4 passed (2026-10-25): Rung 3 is unblocked.*
 
 ### Rung 4: industry partner data
 
@@ -213,8 +213,8 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 ## Phase 4: Make real data possible (parallel)
 
-- [ ] **Reference-die mode:** clean die (or median of many dies) as the structural reference instead of CAD.
-- [ ] Validate reference-die vs CAD mode on synthetic data first (F1 cost).
+- [x] **Reference-die mode:** clean die (or median of many dies) as the structural reference instead of CAD. (`src/nanovate/refdie.py`)
+- [x] Validate reference-die vs CAD mode on synthetic data first (F1 cost). *2026-10-25 (`docs/PHASE4_REFDIE.md`): loss 4.6 F1 points [2.3, 6.9] (n = 1,152, val layouts 8–23): **kill condition not triggered**. The oracle arm (true reference wafer) loses the same, so the cost is the reference die's own LER, not segmentation. Particle recall 98% → 81%, filament called killer 32% → 62%, opens 70% → 79%.*
 - [ ] Find a public SEM defect dataset with die-to-die references or repeated patterns; check licence, pixel size, label quality.
 - [ ] Ask the university SEM facility about imaging test structures.
 

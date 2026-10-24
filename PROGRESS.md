@@ -625,3 +625,12 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
   in Limitations relabelled; `docs/README.md` index lists Rungs 1b-1d, B2 and the lab request; review-UI mode label no
   longer overlaps the grid header.
 - Branch `day0-value-case` (fully merged into main) deleted.
+
+### Phase 4: reference-die mode (2026-10-25; synthetic, val layouts 8-23; `docs/PHASE4_REFDIE.md`)
+- Prereg c2e3601. Pseudo-CAD from 2 aligned clean dies (Otsu, sigma 1.5, 10 px cleanup), Module 1 on the reference dies,
+  frozen v3 verifier, no re-tuning. Pooled killer F1: CAD 0.849, R2 0.803 -> loss 4.6 [2.3, 6.9] pts (n = 1,152):
+  kill condition (> 10 pts) NOT triggered. R1 4.7, R-oracle (true reference wafer) 4.5 -> the loss is the reference
+  die's own LER, not segmentation. Pseudo-CAD topology correct 92/96 (all failures = Manhattan layout 13).
+- Surprise: errors reshuffle (particle 98% -> 81%, filament called killer 32% -> 62%, open 70% -> 79%, notch 23% -> 16%);
+  the raw oracle wafer makes a worse reference than the smoothed pseudo-CAD for nuisance (26.6% vs 10.4% false killer).
+- Track C Rung 3 unblocked.

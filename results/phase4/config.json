@@ -1,0 +1,22 @@
+{
+  "data": "synthetic",
+  "split": "val layouts 8-23",
+  "prereg": "docs/PHASE4_REFDIE_PREREG.md",
+  "quick": false,
+  "primary": {
+    "f1_cad_minus_R2": 0.045672367421792925,
+    "ci": [
+      0.023082035089239054,
+      0.06869807413504311
+    ],
+    "n": 1152,
+    "killed": false
+  },
+  "pseudo_cad_topology_ok": {
+    "R2": 0.9583333333333334,
+    "R1": 0.9479166666666666,
+    "n_refs": 96
+  },
+  "ref_build_ms_R2_median": 5.988666496705264,
+  "wall_s": 216.77720189094543
+}
