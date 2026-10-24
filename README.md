@@ -1,4 +1,30 @@
-# Nanovate — training-free SEM topology defect verifier (synthetic-data prototype)
+<p align="center">
+  <img src="docs/assets/logo.svg" width="96" alt="Nanovate logo: three interconnect lines, the middle one severed around a ring">
+</p>
+
+<h1 align="center">Nanovate</h1>
+
+<p align="center">
+  <b>A training-free SEM defect verifier: a defect is a <i>killer</i> only when circuit topology differs from CAD.</b><br>
+  <sub>Persistent homology · scribe-line calibration · sub-pixel alignment · honest baselines · synthetic testbed + a real-SEM track</sub>
+</p>
+
+<p align="center">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-2a78d6?style=flat-square">
+  <img alt="Training-free" src="https://img.shields.io/badge/labels%20needed-none-1baf7a?style=flat-square">
+  <img alt="Synthetic-data prototype" src="https://img.shields.io/badge/status-synthetic--data%20prototype-eda100?style=flat-square">
+  <img alt="Pre-registered" src="https://img.shields.io/badge/targets-pre--registered-59636e?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="#results-at-a-glance">Results</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#demo-app">Demo app</a> ·
+  <a href="#real-sem-data-track-c">Real SEM data</a> ·
+  <a href="#limitations">Limitations</a> ·
+  <a href="docs/README.md">Docs</a>
+</p>
 
 <!-- STATUS:START -->
 > **Status** _(generated from the result CSVs by `scripts/reproduce.py`; not typed by hand)_
@@ -7,9 +33,16 @@
 > - **v3 headline (synthetic):** killer F1 on an unseen via layout 0.84 [0.78, 0.90] (n=144) vs the Manhattan-trained CNN 0.75 [0.67, 0.82] (n=144); curvy 0.90 [0.84, 0.95] (n=144) vs 0.83 [0.77, 0.89] (n=144). Review-queue projection (via, 50 killers in 1,000 sites): 3 [1, 6] killers missed vs 9 [6, 13] for the CNN, n=144 samples per method.
 > - **v3 nuisance stress (synthetic):** worst cell at LER ≤ 1.5 nm, suppression 67% [50, 83] (n=24) at sigma 1.5 nm, grain 20%, bridge recall 88% [75, 100] (n=24) at sigma 0.5 nm, grain 30% (target ≥ 90% / ≥ 90%: **not met**).
 > - **Where the CNN wins (synthetic):** on its training layout (Manhattan) F1 0.92 [0.88, 0.96] (n=144) vs 0.87 [0.81, 0.92] (n=144); at low dose (lowest dose with F1 ≥ 0.9: CNN 20 e⁻/px, verifier none); and speed, 2.4 ms vs 129.8 ms per patch (median, this CPU).
-> - **Real SEM data (Track C Rung 1): not yet working.** On real images of defect-free hole arrays the frozen v3 verifier calls 78.5% [66.4, 87.6] (n=158 tiles) KILLER (32 images; pre-registered target ≤ 5%, **not met**; [docs/REAL_DATA_RUNG1.md](docs/REAL_DATA_RUNG1.md)). Fixing this is the next step.
+> - **Real SEM data (Track C): not yet working.** Rung 1: on real images of defect-free hole arrays the frozen v3 verifier calls 78.5% [66.4, 87.6] (n=158 tiles) KILLER (32 images; pre-registered target ≤ 5%, **not met**; [docs/REAL_DATA_RUNG1.md](docs/REAL_DATA_RUNG1.md)). Latest (Rung 1d): on clean tiles of a held-out fresh set, KILLER 0% [0, 0] (n=68) and NEAR_MISS 7% [0, 15] (n=68) (target ≤ 5%, **not met**); on the original set KILLER 13% [6, 24] (n=158) ([docs/REAL_DATA_RUNG1D.md](docs/REAL_DATA_RUNG1D.md)).
 > - **Demo app** (`python -m nanovate.app`) runs pipeline **v3** by default; `--pipeline-version v2` switches to v2.
 <!-- STATUS:END -->
+
+<p align="center">
+  <img src="docs/assets/screenshots/live-verdict.png" alt="Nanovate Review, Live tab: verifier, CNN and die-to-die verdicts side by side on a simulated bridge, with the verifier's located merge event as its reason" width="100%">
+  <br><sub>The demo app on a simulated bridge: the verifier (left) says <i>why</i> — a located merge between two CAD conductors — next to the CNN and die-to-die baselines.</sub>
+</p>
+
+## Why
 
 **Thesis.** A SEM defect inspector should call a defect a *killer* only when the circuit's **topology differs from
 CAD** (a short, an open, a stray conductive particle), not when pixels merely differ (line-edge roughness, grain,
@@ -21,7 +54,14 @@ on Manhattan layouts only) on a **synthetic** SEM testbed. **Everything here is 
 validated on real SEM images** (see Limitations). Targets from the planning documents are hypotheses, reported as
 met or missed, never tuned toward.
 
-## Pipeline
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/testbed_strip-dark.png">
+  <img alt="Synthetic testbed: one Manhattan tile per defect class, simulated SEM above, ground-truth wafer below with the defect in teal" src="docs/assets/figures/testbed_strip-light.png">
+</picture>
+
+<sub>The six sample kinds in the synthetic testbed. Labels come from the exact topology of the ground-truth wafer, never from the injection intent.</sub>
+
+## How it works
 
 ```
  3 scribe patches ──► [1] Calibrate: ridge on 5 CAD features -> template T(C), conductor/dielectric levels,
@@ -44,39 +84,85 @@ Baselines on identical patches and labels: **die-to-die** (single and double dif
 Module-3 aligner and stabilised with the same Module-1 noise model; rules fitted per dose on Manhattan val) and a
 **small ResNet CNN** on `[image, CAD]` trained on Manhattan only (weights `m6_cnn/cnn.pt`).
 
-## How to run
+## Results at a glance
 
-```bash
-python -m venv .venv && .venv/bin/pip install -e .      # numpy scipy scikit-image gdstk gudhi torch matplotlib pandas pytest
-.venv/bin/pytest -q                                      # all tests
-.venv/bin/python scripts/reproduce.py --quick            # every experiment end to end, small n, a few minutes -> results/v2/quick/
-.venv/bin/python scripts/reproduce.py                    # full v2 run -> results/v2/ and the v2 table below (CPU, about an hour)
-.venv/bin/python scripts/reproduce.py --version v1       # the first pre-registered run -> results/ and the v1 table
-.venv/bin/python scripts/reproduce.py --version v3       # v3: event rule chosen on val, Exp 1-6 on a fresh test seed -> results/v3/ and the v3 table
-```
+v3 verifier, frozen on Manhattan validation and run once on a fresh test seed. Every chart is drawn from the result CSVs by
+[`scripts/make_figures.py`](scripts/make_figures.py); the exact numbers with CIs are in the [detailed tables](#detailed-results).
+Dashed lines are the pre-registered targets — hypotheses, reported as met or missed, never tuned toward.
 
-**v1 and v2.** v1 is the first, pre-registered run and is kept unchanged. v2 adds fixes designed *after* the v1 test
-results were seen (splice-seam holes, an LER-robust near-miss rule, faster calibration); every v2 choice was made on
-Manhattan val only and no target was changed. What changed, why, and the val evidence: [`docs/V2_FIXES.md`](docs/V2_FIXES.md).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp3_geometry-dark.png">
+  <img alt="Exp 3: killer F1 per layout family for the verifier, CNN and two die-to-die baselines" src="docs/assets/figures/exp3_geometry-light.png">
+</picture>
 
-`reproduce.py` selects the verifier configuration on **Manhattan validation only** (`results/[v2/]calib/decisions.json`),
-runs Experiments 1–6 on the held-out **test** split, and rewrites the results block below **from the CSVs only**. One seed
-drives everything: non-timing CSVs are identical across runs on the same machine (timings in Exp 6 are not).
-The CNN is trained off-machine (`scripts/train_cnn.py`, `notebooks/train_cnn_colab.ipynb`) and only evaluated here.
-Per-milestone measurements, surprises and missed targets are in `PROGRESS.md`; the design in `PLAN.md`.
+**Exp 3 · zero-shot geometry.** Calibrated (verifier) or trained (CNN) on Manhattan only, then tested on curvy wires and via
+arrays. The CNN wins on its own layout; the verifier holds up better on the layouts it has never seen.
 
-**Demo.** `notebooks/demo.ipynb` walks one synthetic tile through every stage (calibration, alignment, field, persistence diagrams,
-SDF energy) and prints each verdict with its reason, for a bridge, an open, a particle, a nuisance sample and a near-miss, plus the
-singleton-vs-stack distinction. It is a thin caller of `src/nanovate/demo.py` (tested; `tests/test_demo.py` executes every cell without
-jupyter). Regenerate the notebook with `python scripts/make_demo_notebook.py`. The tiles are illustrations from the validation split, not results.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp2_dose-dark.png">
+  <img alt="Exp 2: killer F1 versus electron dose for four methods" src="docs/assets/figures/exp2_dose-light.png">
+</picture>
+
+**Exp 2 · dose cliff.** Killer F1 vs electron dose. The CNN reaches the 0.9 line at lower dose; the verifier does not reach it
+at any dose (target missed).
+
+<table>
+<tr>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp4_misalignment-dark.png">
+  <img alt="Exp 4: share of verdicts unchanged under shift and warp, with and without Module 3" src="docs/assets/figures/exp4_misalignment-light.png">
+</picture>
+
+**Exp 4 · misalignment.** Verdicts unchanged under ±8 px shift + warp, with and without sub-pixel alignment (Module 3).
+
+</td>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp5_nearmiss-dark.png">
+  <img alt="Exp 5: near-miss recall for the delta-beta rule alone versus the full rule" src="docs/assets/figures/exp5_nearmiss-light.png">
+</picture>
+
+**Exp 5 · near-miss capture.** Notches and filaments keep topology, so Δβ alone misses them; bottleneck + SDF energy recover them.
+
+</td>
+</tr>
+</table>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp1_nuisance-dark.png">
+  <img alt="Exp 1: heatmaps of nuisance suppression and bridge recall over LER sigma and grain contrast" src="docs/assets/figures/exp1_nuisance-light.png">
+</picture>
+
+**Exp 1 · nuisance stress.** Line-edge roughness (σ) × grain contrast. Die-to-die flags roughness once σ reaches 1.5 nm; the
+verifier degrades more slowly but misses the 90% / 90% target at σ ≤ 1.5 nm.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/exp6_latency-dark.png">
+  <img alt="Exp 6: median latency of calibration, verifier stages and baselines" src="docs/assets/figures/exp6_latency-light.png">
+</picture>
+
+**Exp 6 · latency.** Calibration from three scribe patches meets its target; per patch the verifier is far slower than the CNN.
+
+## Real SEM data (Track C)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/real_rungs-dark.png">
+  <img alt="Track C: KILLER and NEAR_MISS rates on clean real SEM tiles across Rungs 1 to 1d" src="docs/assets/figures/real_rungs-light.png">
+</picture>
+
+The frozen verifier on **real** SEM images of defect-free nanowell arrays (public data, [Zenodo 10.5281/zenodo.8060099](https://doi.org/10.5281/zenodo.8060099), CC-BY-4.0),
+against a *fitted* reference rather than CAD. Every rung was pre-registered before its single real run:
+[Rung 1](docs/REAL_DATA_RUNG1.md) · [1b](docs/REAL_DATA_RUNG1B.md) · [1c](docs/REAL_DATA_RUNG1C.md) · [1d](docs/REAL_DATA_RUNG1D.md).
+Rung 2 (a fabricated test chip with known defects) is drafted in [`docs/LAB_REQUEST.md`](docs/LAB_REQUEST.md).
 
 ## Why use this: the day-0 case
 
 Existing review-SEM classifiers are trained per defect class and per layer, so on the first wafers of a new layer
 they do not exist yet. This verifier needs no labelled images: the table below compares the options available
 on that day, generated from the result CSVs. The full argument is in [`docs/USE_CASE.md`](docs/USE_CASE.md).
-
-### Day-0 report — v3 (frozen v3 rule, fresh test seed; the version the deck reports)
 
 <!-- DAY0_V3:START -->
 _v3: All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50, `results/v3/exp3/samples.csv`) with an assumed site mix._
@@ -121,57 +207,66 @@ Other prevalences (killers missed / non-killer sites flagged KILLER):
 The label break-even experiment (how many labelled images of a new layout the CNN needs to match the verifier) is **not yet run** for v3 (the v2 break-even compares the CNN against the v2 verifier).
 <!-- DAY0_V3:END -->
 
-### Day-0 report — v2 (kept for comparison; same projection method, site mix and seed)
+## Quickstart
 
-<!-- DAY0:START -->
-_v2: All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50, `results/v2/exp3/samples.csv`) with an assumed site mix._
+```bash
+python -m venv .venv && .venv/bin/pip install -e .      # numpy scipy scikit-image gdstk gudhi torch matplotlib pandas pytest
+.venv/bin/pytest -q                                      # all tests
+.venv/bin/python scripts/reproduce.py --version v3       # v3 (headline): rule chosen on val, Exp 1-6 on a fresh test seed -> results/v3/
+.venv/bin/python scripts/reproduce.py --quick            # every v2 experiment end to end, small n, a few minutes -> results/v2/quick/
+.venv/bin/python scripts/reproduce.py                    # full v2 run -> results/v2/ and the v2 table (CPU, about an hour)
+.venv/bin/python scripts/reproduce.py --version v1       # the first pre-registered run -> results/ and the v1 table
+.venv/bin/python scripts/make_figures.py                 # redraw the README charts from the CSVs -> docs/assets/figures/
+```
 
-#### Day 0 on a new layer (v2): what each option gives you
+`reproduce.py` selects the verifier configuration on **Manhattan validation only** (`results/[v2/|v3/]calib/decisions.json`),
+runs Experiments 1–6 on the held-out **test** split, and rewrites the generated blocks of this README **from the CSVs only**. One seed
+drives everything: non-timing CSVs are identical across runs on the same machine (timings in Exp 6 are not).
+The CNN is trained off-machine (`scripts/train_cnn.py`, `notebooks/train_cnn_colab.ipynb`) and only evaluated here.
+Per-milestone measurements, surprises and missed targets are in [`PROGRESS.md`](PROGRESS.md); the design in [`PLAN.md`](PLAN.md).
 
-|  | Verifier (ours) | CNN (Manhattan-trained) | Die-to-die (single) |
-|---|---|---|---|
-| Labelled images needed before first use | none (3 scribe images per layer) | a labelled training set (Manhattan here) | labelled val per dose, to fit the rule |
-| F1 on a new layout: via | 0.88 [0.82, 0.93] (n=144) | 0.74 [0.66, 0.81] (n=144) | 0.56 [0.45, 0.65] (n=144) |
-| F1 on a new layout: curvy | 0.84 [0.77, 0.90] (n=144) | 0.85 [0.79, 0.90] (n=144) | 0.55 [0.45, 0.66] (n=144) |
-| F1 on the layout the CNN was trained on (Manhattan) | 0.81 [0.73, 0.87] (n=144) | 0.94 [0.89, 0.97] (n=144) | 0.57 [0.45, 0.67] (n=144) |
-| Setup per layer | 43 ms calibration | training run (GPU) | rule fit |
-| Time per patch (this CPU) | 99 ms | 3 ms | 31 ms |
-| Says why it flagged a site | yes: delta-beta, bottleneck, SDF energy | no (a probability) | no (a difference map) |
+**Versions.** v1 is the first, pre-registered run and is kept unchanged. v2 adds fixes designed *after* the v1 test results were
+seen (splice-seam holes, an LER-robust near-miss rule, faster calibration; [`docs/V2_FIXES.md`](docs/V2_FIXES.md)). v3 replaces
+the global merge threshold with a per-gap rule and is evaluated once on a fresh test seed ([`docs/V3_PHASE2_DESIGN.md`](docs/V3_PHASE2_DESIGN.md)).
+Every choice was made on Manhattan val only and no target was changed.
 
-Where the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.
+**Notebook.** [`notebooks/demo.ipynb`](notebooks/demo.ipynb) walks one synthetic tile through every stage (calibration, alignment, field,
+persistence diagrams, SDF energy) and prints each verdict with its reason, for a bridge, an open, a particle, a nuisance sample and a
+near-miss, plus the singleton-vs-stack distinction. It is a thin caller of `src/nanovate/demo.py` (tested; `tests/test_demo.py` executes
+every cell without jupyter). Regenerate it with `python scripts/make_demo_notebook.py`. The tiles are illustrations from the validation split, not results.
 
-#### Review queue (v2): 1,000 flagged sites on a new via layer, 5% real killers (50 sites)
+## Demo app
 
-| Sites (95% CI) | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
-|---|---|---|---|---|
-| Killers caught (flagged KILLER) | 45 [42, 48] | 38 [34, 41] | 26 [22, 29] | 31 [26, 35] |
-| Killers flagged NEAR_MISS (still reviewed) | 3 [1, 6] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
-| Killers missed (passed as harmless) | 2 [0, 4] | 12 [9, 16] | 24 [21, 28] | 19 [15, 24] |
-| Non-killer sites flagged KILLER (incl. near-misses) | 22 [12, 34] | 73 [28, 146] | 46 [40, 51] | 103 [61, 176] |
-| Near-misses flagged NEAR_MISS (reliability bin) | 73 [61, 83] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
-| Harmless sites flagged NEAR_MISS | 36 [0, 107] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
-| All sites sent to an engineer | 179 [142, 250] | 111 [66, 185] | 71 [63, 78] | 133 [91, 209] |
+```bash
+.venv/bin/pip install -e ".[app]" -c requirements-app.txt
+.venv/bin/python -m nanovate.app            # http://127.0.0.1:8765  (localhost only; pipeline v3, --pipeline-version v2 to switch)
+```
 
-Site mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament (near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshots/review-grid.png" alt="Sample Grid: verdict markers per family and defect kind, with the inspector showing the Module 4 reason for a selected bridge"></td>
+<td width="50%"><img src="docs/assets/screenshots/patch-compare.png" alt="Patch Compare: CAD, ground-truth wafer, simulated SEM image and conductor field for one bridge sample"></td>
+</tr>
+<tr>
+<td><sub><b>Sample Grid</b> — every validation sample by family × defect kind; a red ring marks verdict ≠ truth. The inspector shows Δβ, Betti numbers, bottleneck and SDF energy.</sub></td>
+<td><sub><b>Patch Compare</b> — CAD, ground-truth wafer, simulated SEM and the conductor field the topology is computed on.</sub></td>
+</tr>
+</table>
 
-Other prevalences (killers missed / non-killer sites flagged KILLER):
+The **Live** tab runs any family / defect / dose through all three methods; **Evidence** shows the generated result tables.
+A static, server-free viewer is in `frontend/index.html`:
 
-| Real killers | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
-|---|---|---|---|---|
-| 1% | 0 [0, 1] / 23 [12, 35] | 2 [2, 3] / 76 [29, 153] | 5 [4, 6] / 47 [41, 54] | 4 [3, 5] / 107 [64, 184] |
-| 20% | 8 [0, 17] / 18 [10, 28] | 50 [36, 64] / 62 [23, 123] | 97 [83, 111] / 38 [33, 43] | 78 [61, 94] / 87 [52, 148] |
+```bash
+python scripts/export_ui.py                      # writes frontend/data/run.js (v2 config frozen on Manhattan val, results/v2/calib/decisions.json)
+python3 -m http.server --directory frontend      # then open http://localhost:8000
+```
 
-#### Label break-even (v2): labelled images of the new layout the CNN needs to match the verifier
+## Detailed results
 
-| Family | CNN threshold | Verifier F1 | Break-even k (seed-mean F1 >= verifier) | Clearly better k (every seed's CI above) | n |
-|---|---|---|---|---|---|
-| curvy | fixed_0.39 | 0.84 | 0 | 48 | 3 seeds, n=144 |
-| curvy | labelled | 0.84 | 0 | 192 | 3 seeds, n=144 |
-| via | fixed_0.39 | 0.88 | 192 | none | 3 seeds, n=144 |
-| via | labelled | 0.88 | 192 | none | 3 seeds, n=144 |
-<!-- DAY0:END -->
+All tables below are generated from the result CSVs by `scripts/reproduce.py` — never typed by hand. **Synthetic data.**
 
-## Results (v3: per-gap merge rule, fresh test seed)
+<details open>
+<summary><b>v3 — per-gap merge rule, fresh test seed (headline)</b></summary>
 
 <!-- RESULTS_V3:START -->
 _All numbers below are **synthetic data** (full run, v3; 95% percentile-bootstrap CIs in brackets, n beside every number)._
@@ -312,7 +407,10 @@ The secondary variant was declared before this run (`results/v3/calib/secondary.
 Shortest cut length from which every bin has open recall >= 90% (definition fixed before the run): v3 primary (frozen): 4 nm; v3 secondary (cut margin off, pre-declared): 4 nm; v2 rule, same patches: 4 nm.
 <!-- RESULTS_V3:END -->
 
-## Results (v2: post-hoc fixes)
+</details>
+
+<details>
+<summary><b>v2 — post-hoc fixes (kept for comparison)</b></summary>
 
 <!-- RESULTS:START -->
 _All numbers below are **synthetic data** (full run, v2; 95% percentile-bootstrap CIs in brackets, n beside every number)._
@@ -411,7 +509,60 @@ F1 drop vs Manhattan (points, 95% CI): Verifier (ours) -> curvy: -3.7 [-12.7, +5
 | cnn batch 64, 5 thread(s) (per patch) | 7.6 | 7.6 [7.5, 7.6] (n=5) |
 <!-- RESULTS:END -->
 
-## Results (v1: first pre-registered run, kept unchanged)
+### Day-0 report — v2 (same projection method, site mix and seed)
+
+<!-- DAY0:START -->
+_v2: All numbers are **synthetic data**; the review queue is a **projection** from measured per-kind rates (via family, dose 50, `results/v2/exp3/samples.csv`) with an assumed site mix._
+
+#### Day 0 on a new layer (v2): what each option gives you
+
+|  | Verifier (ours) | CNN (Manhattan-trained) | Die-to-die (single) |
+|---|---|---|---|
+| Labelled images needed before first use | none (3 scribe images per layer) | a labelled training set (Manhattan here) | labelled val per dose, to fit the rule |
+| F1 on a new layout: via | 0.88 [0.82, 0.93] (n=144) | 0.74 [0.66, 0.81] (n=144) | 0.56 [0.45, 0.65] (n=144) |
+| F1 on a new layout: curvy | 0.84 [0.77, 0.90] (n=144) | 0.85 [0.79, 0.90] (n=144) | 0.55 [0.45, 0.66] (n=144) |
+| F1 on the layout the CNN was trained on (Manhattan) | 0.81 [0.73, 0.87] (n=144) | 0.94 [0.89, 0.97] (n=144) | 0.57 [0.45, 0.67] (n=144) |
+| Setup per layer | 43 ms calibration | training run (GPU) | rule fit |
+| Time per patch (this CPU) | 99 ms | 3 ms | 31 ms |
+| Says why it flagged a site | yes: delta-beta, bottleneck, SDF energy | no (a probability) | no (a difference map) |
+
+Where the verifier loses: on a layout the CNN was trained on, the CNN is more accurate, and it is much faster per patch.
+
+#### Review queue (v2): 1,000 flagged sites on a new via layer, 5% real killers (50 sites)
+
+| Sites (95% CI) | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
+|---|---|---|---|---|
+| Killers caught (flagged KILLER) | 45 [42, 48] | 38 [34, 41] | 26 [22, 29] | 31 [26, 35] |
+| Killers flagged NEAR_MISS (still reviewed) | 3 [1, 6] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| Killers missed (passed as harmless) | 2 [0, 4] | 12 [9, 16] | 24 [21, 28] | 19 [15, 24] |
+| Non-killer sites flagged KILLER (incl. near-misses) | 22 [12, 34] | 73 [28, 146] | 46 [40, 51] | 103 [61, 176] |
+| Near-misses flagged NEAR_MISS (reliability bin) | 73 [61, 83] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| Harmless sites flagged NEAR_MISS | 36 [0, 107] | 0 [0, 0] | 0 [0, 0] | 0 [0, 0] |
+| All sites sent to an engineer | 179 [142, 250] | 111 [66, 185] | 71 [63, 78] | 133 [91, 209] |
+
+Site mix assumed: killers split equally bridge / open / particle; harmless sites 90% roughness-only, 5% notch, 5% filament (near-misses). Only the verifier has a NEAR_MISS bin; the others must call a near-miss killer or harmless.
+
+Other prevalences (killers missed / non-killer sites flagged KILLER):
+
+| Real killers | Verifier (no labels) | CNN (Manhattan-trained) | Die-to-die (single) | Die-to-die (double) |
+|---|---|---|---|---|
+| 1% | 0 [0, 1] / 23 [12, 35] | 2 [2, 3] / 76 [29, 153] | 5 [4, 6] / 47 [41, 54] | 4 [3, 5] / 107 [64, 184] |
+| 20% | 8 [0, 17] / 18 [10, 28] | 50 [36, 64] / 62 [23, 123] | 97 [83, 111] / 38 [33, 43] | 78 [61, 94] / 87 [52, 148] |
+
+#### Label break-even (v2): labelled images of the new layout the CNN needs to match the verifier
+
+| Family | CNN threshold | Verifier F1 | Break-even k (seed-mean F1 >= verifier) | Clearly better k (every seed's CI above) | n |
+|---|---|---|---|---|---|
+| curvy | fixed_0.39 | 0.84 | 0 | 48 | 3 seeds, n=144 |
+| curvy | labelled | 0.84 | 0 | 192 | 3 seeds, n=144 |
+| via | fixed_0.39 | 0.88 | 192 | none | 3 seeds, n=144 |
+| via | labelled | 0.88 | 192 | none | 3 seeds, n=144 |
+<!-- DAY0:END -->
+
+</details>
+
+<details>
+<summary><b>v1 — first pre-registered run (kept unchanged)</b></summary>
 
 <!-- RESULTS_V1:START -->
 _All numbers below are **synthetic data** (full run; 95% percentile-bootstrap CIs in brackets, n beside every number)._
@@ -499,15 +650,19 @@ F1 drop vs Manhattan (points, 95% CI): Verifier (ours) -> curvy: -3.7 [-12.7, +5
 | cnn batch 64, 5 thread(s) (per patch) | 8.2 | 8.2 [8.1, 8.3] (n=5) |
 <!-- RESULTS_V1:END -->
 
-## Limitations (read these before believing any number above)
+</details>
+
+## Limitations
+
+Read these before believing any number above.
 
 - **Sim-to-real gap.** All data is synthetic, from a forward model written by the same authors. The testbed adds deliberate
   mismatch (anisotropic beam, saturating bloom, grain, charging) so Module 1 is not circular, but real SEM physics
   (charging dynamics, material contrast, sample damage) is not modelled. Ranking methods on this testbed says little about real tools.
 - **τ sensitivity.** A dim bridge of conductor level *c* is detected only if *c* > 1 − τ, so τ trades dim-bridge recall against
-  bloom-induced fake bridges. τ, the field option and the near-miss thresholds were selected on Manhattan validation (`results/calib/`), and the choice is
-  sensitive: see `results/calib/candidates.csv`. Grain makes it worse: at 30% grain contrast a dark grain on a narrow bridge
-  drops it below the merge level (Exp 1 bridge recall 79%); a larger τ recovers those bridges but loses opens (`docs/V2_FIXES.md`).
+  bloom-induced fake bridges. τ, the field option and the near-miss thresholds were selected on Manhattan validation (`results/[v2/|v3/]calib/`), and the choice is
+  sensitive: see `results/calib/candidates.csv` (v1) and `results/v3/calib/rule_grid.csv` (v3). Grain makes it worse: at 30% grain contrast a dark grain on a narrow bridge
+  drops it below the merge level (v2 Exp 1 bridge recall at that cell, see the v2 table); a larger τ recovers those bridges but loses opens (`docs/V2_FIXES.md`).
 - **Optical resolution.** Cuts shorter than ~4–5 px and particles within ~3–4 px of a wire are barely visible in the simulated images,
   so some ground-truth killers are sub-resolution; most 1–3 nm filaments read as bridges. These are reported as misses, not tuned away.
 - **Singleton layouts.** Module 2 needs same-layout peers (K = 32). Without them the pipeline falls back to Gaussian smoothing and flags
@@ -522,10 +677,20 @@ F1 drop vs Manhattan (points, 95% CI): Verifier (ours) -> curvy: -3.7 [-12.7, +5
 - **Baselines.** Die-to-die rules are tuned per dose with *labelled* validation data (generous to the baseline); the CNN sees the CAD channel
   and was trained off-machine on a GPU (not bit-reproducible).
 
-## Review UI
-`frontend/index.html` views testbed samples with their verdicts, ground-truth labels, Module 4 reasons (Δβ, bottleneck, SDF energy) and patch layers (CAD, W, SEM, conductor field).
+## Repository map
+
 ```
-python scripts/export_ui.py                      # writes frontend/data/run.js from the current pipeline (synthetic data)
-python3 -m http.server --directory frontend      # then open http://localhost:8000
+src/nanovate/
+  testbed/      synthetic SEM testbed: layouts, LER / grain / defects, SEM forward model, topology labels
+  modules/      M1 calibration · M2 low-rank stack · M3 alignment + SDF energy · M4 persistent-homology verdict
+  baselines/    die-to-die differencing · Manhattan-trained ResNet CNN
+  real/         Track C loaders and the fitted reference for real SEM images
+  app/          FastAPI demonstrator behind `python -m nanovate.app`
+  pipeline*.py  end-to-end verdict for one patch / one stack (v2, robust, v3)
+experiments/    exp1-exp6, v3 selection/run, Track C rungs, report.py (writes the README blocks)
+scripts/        reproduce.py · make_figures.py · export_ui.py · training and report helpers
+results/        generated CSV / PNG / config.json per experiment (v1 at the top level, v2/, v3/, real/)
+frontend/       the review UI served by the app (also works as a static viewer)
+notebooks/      demo walk-through, CNN training and label break-even notebooks
+docs/           design notes, pre-registrations, Track C write-ups — index in docs/README.md
 ```
-The export runs each sample through the real pipeline with the verifier configuration frozen on Manhattan val (`results/calib/decisions.json`), at one dose (`--dose`, default 50 e-/px).

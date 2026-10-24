@@ -16,6 +16,11 @@ pre-registration, or an aspirational claim. All measured numbers are **synthetic
 | [V3_PHASE2_VAL.md](V3_PHASE2_VAL.md) | v3 validation check before the fresh test seed. |
 | [REAL_DATA_PREREG.md](REAL_DATA_PREREG.md) | Track C Rung 1 pre-registration (written before any real run). |
 | [REAL_DATA_RUNG1.md](REAL_DATA_RUNG1.md) | Track C Rung 1 result on real SEM images (target missed; see the README status box). |
+| [REAL_DATA_RUNG1B_PREREG.md](REAL_DATA_RUNG1B_PREREG.md) · [REAL_DATA_RUNG1B.md](REAL_DATA_RUNG1B.md) | Rung 1b: three robustness changes chosen on synthetic val, one real repeat. |
+| [REAL_DATA_RUNG1C_PREREG.md](REAL_DATA_RUNG1C_PREREG.md) · [REAL_DATA_RUNG1C.md](REAL_DATA_RUNG1C.md) | Rung 1c: near-miss gate re-selected under a synthetic edge halo, one real repeat. |
+| [REAL_DATA_RUNG1D_PREREG.md](REAL_DATA_RUNG1D_PREREG.md) · [REAL_DATA_RUNG1D.md](REAL_DATA_RUNG1D.md) | Rung 1d: testbed CD offset, CD-corrected SDF energy (rejected on val), one real repeat. |
+| [B2_FAST_BETTI.md](B2_FAST_BETTI.md) | Fast Betti path acceptance test (failed; GUDHI stays in the hot path). |
+| [LAB_REQUEST.md](LAB_REQUEST.md) | Track C Rung 2: draft request to fabricate and image a defect test chip (not sent). |
 | [NEXT_PATHS.md](NEXT_PATHS.md) | Roadmap: done / in progress / next. |
 | [superpowers/](superpowers/) | Design specs and implementation plans for the app and the day-0 case. |
 | [AGENTS.md](AGENTS.md) | Working rules for coding agents on this repo. |

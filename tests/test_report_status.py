@@ -35,3 +35,11 @@ def test_update_status_goes_under_the_title_and_is_idempotent(tmp_path):
 def test_readme_status_block_is_in_sync():
     text = open("README.md").read()
     assert text.split(STATUS_START, 1)[1].split(STATUS_END, 1)[0].strip() == render_status().strip()
+
+
+def test_status_reports_the_latest_real_rung():
+    md = render_status(app_default="v3")
+    s = pd.read_csv("results/real/rung1d/summary.csv")
+    r = s[(s.population == "fresh") & (s.metric == "NEAR_MISS on clean tiles")].iloc[0]
+    assert "Latest (Rung 1d)" in md and "docs/REAL_DATA_RUNG1D.md" in md
+    assert _ci(r["mean"], r.ci_lo, r.ci_hi, r.n_tiles, pct=True) in md

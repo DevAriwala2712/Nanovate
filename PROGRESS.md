@@ -615,3 +615,13 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
 - Post-hoc (pre-declared): the estimator gives G29 b_hat -24 nm, matching the ~40 nm diameter offset measured in Rung 1.
 - Surprise: three rungs show synthetic stressors are absorbed by Module 1 calibration and never stress the gate; the
   testbed, not the threshold, is the limit. Recommendation: stop tuning on these real images; Rung 2 next.
+
+## Repo presentation cleanup (2026-10-25; no new measurements)
+- README restructured: logo, badges, hero screenshot, one chart per experiment (light/dark), Track C figure, demo-app
+  screenshots; v3/v2/v1 detail tables moved into collapsible sections. All generated blocks kept verbatim between their markers.
+- `scripts/make_figures.py` draws every README chart from the result CSVs (`docs/assets/figures/`); no number is typed.
+- Fixed: status box showed only Rung 1 as the real-data state ("next step") although Rungs 1b-1d had run; it now also
+  reports Rung 1d from `results/real/rung1d/summary.csv` (test added). Stale `results/calib` paths and a v2-only number
+  in Limitations relabelled; `docs/README.md` index lists Rungs 1b-1d, B2 and the lab request; review-UI mode label no
+  longer overlaps the grid header.
+- Branch `day0-value-case` (fully merged into main) deleted.

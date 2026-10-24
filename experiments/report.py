@@ -270,7 +270,7 @@ def render_status(v3_root: str | Path = "results/v3", real_csv: str | Path = REA
     """The README status box (directly under the title): every number is read from the v3 / Track C result CSVs.
 
     Reads <v3_root>/{exp3/geometry_f1.csv, day0/scenario.csv, phase2_targets.csv, exp2/lowest_dose.csv, exp6/latency.csv}
-    and results/real/rung1/summary.csv; ``app_default`` defaults to ``nanovate.app.engine.DEFAULT_VERSION``.
+    and results/real/rung1{,d}/summary.csv; ``app_default`` defaults to ``nanovate.app.engine.DEFAULT_VERSION``.
     """
     root = Path(v3_root)
     if app_default is None:
@@ -279,6 +279,8 @@ def render_status(v3_root: str | Path = "results/v3", real_csv: str | Path = REA
     tg = pd.read_csv(root / "phase2_targets.csv") if (root / "phase2_targets.csv").exists() else None
     low = _read(root, "exp2", "lowest_dose")
     real = pd.read_csv(real_csv) if Path(real_csv).exists() else None
+    latest_csv = Path(real_csv).parent.parent / "rung1d" / "summary.csv"
+    latest = pd.read_csv(latest_csv) if latest_csv.exists() else None
 
     def f1(m, fam):
         r = geo[(geo.method == m) & (geo.family == fam)] if geo is not None else []
@@ -308,10 +310,19 @@ def render_status(v3_root: str | Path = "results/v3", real_csv: str | Path = REA
     if real is not None:
         r = real[(real.metric == "false alarm: KILLER on clean tiles") & (real.scope == "arm C, all ZMW groups")].iloc[0]
         ok = r["mean"] <= 0.05          # pre-registered target (docs/REAL_DATA_PREREG.md): false KILLER <= 5% of clean tiles
-        real_line = (f"**Real SEM data (Track C Rung 1): {'target met' if ok else 'not yet working'}.** On real images of defect-free hole arrays the frozen v3 verifier "
+        real_line = (f"**Real SEM data (Track C): {'target met' if ok else 'not yet working'}.** Rung 1: on real images of defect-free hole arrays the frozen v3 verifier "
                      f"calls {100 * r['mean']:.1f}% [{100 * r.ci_lo:.1f}, {100 * r.ci_hi:.1f}] (n={int(r.n_tiles)} tiles) KILLER ({int(r.n_images)} images; pre-registered target "
                      f"≤ 5%, {'met' if ok else '**not met**'}; [docs/REAL_DATA_RUNG1.md](docs/REAL_DATA_RUNG1.md))."
-                     + ("" if ok else " Fixing this is the next step."))
+                     + ("" if ok else " Fixing this is the next step." if latest is None else ""))
+        if latest is not None:  # the newest Track C rung, so the box never shows Rung 1 as the current state
+            k = latest[(latest.population == "fresh") & (latest.metric == "KILLER on clean tiles")].iloc[0]
+            nm = latest[(latest.population == "fresh") & (latest.metric == "NEAR_MISS on clean tiles")].iloc[0]
+            ko = latest[(latest.population == "orig") & (latest.metric == "KILLER on clean tiles")].iloc[0]
+            nm_ok = nm["mean"] <= 0.05  # pre-registered (docs/REAL_DATA_RUNG1D_PREREG.md): NEAR_MISS <= 5% on fresh clean tiles
+            real_line += (f" Latest (Rung 1d): on clean tiles of a held-out fresh set, KILLER {_ci(k['mean'], k.ci_lo, k.ci_hi, k.n_tiles, pct=True)} "
+                          f"and NEAR_MISS {_ci(nm['mean'], nm.ci_lo, nm.ci_hi, nm.n_tiles, pct=True)} (target ≤ 5%, "
+                          f"{'met' if nm_ok else '**not met**'}); on the original set KILLER "
+                          f"{_ci(ko['mean'], ko.ci_lo, ko.ci_hi, ko.n_tiles, pct=True)} ([docs/REAL_DATA_RUNG1D.md](docs/REAL_DATA_RUNG1D.md)).")
     else:
         real_line = "**Real SEM data (Track C Rung 1):** not run yet."
     lines = [
