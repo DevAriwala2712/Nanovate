@@ -1,0 +1,17 @@
+{
+ "instances": 453850,
+ "windows": 485920,
+ "windows_without_home": 26277,
+ "instances_in_groups_ge4": 452889,
+ "instances_all_windows_home": 428431,
+ "instances_verifiable": 427519,
+ "groups_with_reference": 737,
+ "filler_verifiable": 218048,
+ "functional_verifiable": 209475,
+ "tile_offset_source": {
+  "own": 964,
+  "global": 957,
+  "neighbours": 149
+ },
+ "seconds": 208
+}

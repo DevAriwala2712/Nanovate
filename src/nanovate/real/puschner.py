@@ -102,3 +102,51 @@ def density_map(inst: pd.DataFrame, um_per_px: float, shape: tuple[int, int], or
     for a, b, c, d in zip(y0, y1, x0, x1):
         D[max(a, 0):min(b, shape[0]), max(c, 0):min(d, shape[1])] = 1.0
     return D
+
+
+def gds_to_mosaic(reg: dict):
+    """Callable (x_um, y_um) -> (row_px, col_px) in mosaic px from the coarse registration (rot90 k=1 after a y-flip and
+    an x-mirror: GDS x runs down the mosaic rows, GDS y runs right-to-left along the columns)."""
+    p_um = reg["p_nm"] / 1000.0
+    xmin, ymin = reg["gds_min_um"]
+    f = reg["factor"]
+    off_r, off_c = reg["offset_lowres"]
+    Hg = reg["gds_shape_lowres"][0]
+    def T(x, y):
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        return f * off_r + (x - xmin) / p_um, f * (off_c + Hg - 1) - (y - ymin) / p_um
+    return T
+
+
+def contact_density(tile: np.ndarray, f: int = 4) -> np.ndarray:
+    """Bright-contact density at 1/f resolution: fraction of pixels above the tile's 97th percentile, smoothed."""
+    from scipy import ndimage as ndi
+    b = (tile > np.percentile(tile, 97)).astype(np.float32)
+    h, w = (b.shape[0] // f) * f, (b.shape[1] // f) * f
+    d = b[:h, :w].reshape(h // f, f, w // f, f).mean((1, 3))
+    return ndi.gaussian_filter(d, 3)
+
+
+def functional_mask(inst_reg: pd.DataFrame, r0: float, c0: float, H: int, W: int, f: int = 4) -> np.ndarray:
+    """Registered functional-cell mask for the mosaic window [r0, r0+H) x [c0, c0+W) at 1/f resolution."""
+    m = np.zeros((H // f, W // f), np.float32)
+    s = inst_reg[(~inst_reg.filler) & (inst_reg.R1 > r0) & (inst_reg.R0 < r0 + H) & (inst_reg.C1 > c0) & (inst_reg.C0 < c0 + W)]
+    for q in s.itertuples():
+        a, b = int(max((q.R0 - r0) // f, 0)), int(min((q.R1 - r0) // f, H // f))
+        c, d = int(max((q.C0 - c0) // f, 0)), int(min((q.C1 - c0) // f, W // f))
+        m[a:b, c:d] = 1.0
+    return m
+
+
+def tile_offset(tile: np.ndarray, inst_reg: pd.DataFrame, ty: int, tx: int, search: int = 160, f: int = 4) -> tuple[float, float, float]:
+    """(d_row, d_col, score) in px: shift to ADD to the registered GDS boxes so they match this tile (max correlation)."""
+    from scipy.signal import fftconvolve
+    D = contact_density(tile, f)
+    D = (D - D.mean()) / (D.std() + 1e-9)
+    s = search // f
+    H, W = tile.shape
+    G = functional_mask(inst_reg, ty - search, tx - search, H + 2 * search, W + 2 * search, f)
+    G = (G - G.mean()) / (G.std() + 1e-9)
+    C = fftconvolve(G, D[::-1, ::-1], mode="valid") / D.size      # C[i, j]: D placed at (i, j) inside G
+    i, j = np.unravel_index(C.argmax(), C.shape)
+    return float((s - i) * f), float((s - j) * f), float(C[i, j])
