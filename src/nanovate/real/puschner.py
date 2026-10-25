@@ -62,3 +62,43 @@ class Affine:
 
     def apply(self, xy: np.ndarray) -> np.ndarray:
         return np.asarray(xy, float) @ np.asarray(self.A, float).T + np.asarray(self.t, float)
+
+
+# --------------------------------------------------------------------------- registration (GDS um -> mosaic px)
+
+def read_tile(zf, name: str) -> np.ndarray:
+    """One tile from the (unextracted) 90 nm zip as a float grey image."""
+    import io
+
+    import tifffile
+    member = next(m for m in zf.namelist() if m.endswith(name))
+    with zf.open(member) as f:
+        a = tifffile.imread(io.BytesIO(f.read()))
+    return (a if a.ndim == 2 else a[..., 0]).astype(np.float32)
+
+
+def low_res_mosaic(zip_path: str | Path, pos: pd.DataFrame, factor: int, tile_px: int) -> np.ndarray:
+    """Block-mean downsampled mosaic (later tiles overwrite the 10% overlaps). Shape ~ (max y + tile)/factor."""
+    import zipfile
+    H = int((pos.y.max() + tile_px) // factor) + 1
+    W = int((pos.x.max() + tile_px) // factor) + 1
+    M = np.zeros((H, W), np.float32)
+    with zipfile.ZipFile(zip_path) as zf:
+        for r in pos.itertuples():
+            a = read_tile(zf, r.file)
+            h, w = (a.shape[0] // factor) * factor, (a.shape[1] // factor) * factor
+            s = a[:h, :w].reshape(h // factor, factor, w // factor, factor).mean((1, 3))
+            y0, x0 = r.y // factor, r.x // factor
+            M[y0:y0 + s.shape[0], x0:x0 + s.shape[1]] = s[: H - y0, : W - x0]
+    return M
+
+
+def density_map(inst: pd.DataFrame, um_per_px: float, shape: tuple[int, int], origin_um: tuple[float, float]) -> np.ndarray:
+    """Functional (non-filler) cell coverage on a low-res grid: 1 inside functional cells, 0 elsewhere (GDS y up)."""
+    D = np.zeros(shape, np.float32)
+    f = inst[~inst.filler]
+    x0 = ((f.x0.values - origin_um[0]) / um_per_px).astype(int); x1 = np.ceil((f.x1.values - origin_um[0]) / um_per_px).astype(int)
+    y0 = ((f.y0.values - origin_um[1]) / um_per_px).astype(int); y1 = np.ceil((f.y1.values - origin_um[1]) / um_per_px).astype(int)
+    for a, b, c, d in zip(y0, y1, x0, x1):
+        D[max(a, 0):min(b, shape[0]), max(c, 0):min(d, shape[1])] = 1.0
+    return D
