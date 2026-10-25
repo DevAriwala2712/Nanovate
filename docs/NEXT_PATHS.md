@@ -201,6 +201,10 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 *Kill condition:* if the fabricated defects below the facility's resolution cannot be confirmed by an independent image (e.g. high-dose or tilted SEM), they are dropped from the recall denominator and reported as unconfirmed, not as misses or hits.
 
+### Real-wiring false-alarm test (M2), 2026-10-25
+
+*`docs/REAL_DATA_M2.md`: frozen verifier on 64,536 real metal-2 tiles (318 images, commercial 128 nm IC) against validated labels. KILLER 0.31% [0.24, 0.39] (**met**), coverage 100% (met), NEAR_MISS 76.9% (**not met**: driven by bright vias the single-conductor-level model cannot represent; via-free tiles 36%). First real result meeting the killer target. Next: a two-level (track + via) conductor model, chosen on synthetic data with bright vias added.*
+
 ### Rung 3: public SEM defect datasets via reference-die mode
 
 - [ ] Uses Phase 4's reference-die mode (clean neighbour image as the reference instead of CAD). Only after Phase 4's synthetic check passes its kill condition. *Phase 4 passed (2026-10-25): Rung 3 is unblocked.*

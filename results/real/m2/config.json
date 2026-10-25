@@ -1,0 +1,64 @@
+{
+  "data": "REAL SEM images (M2 real-wiring test)",
+  "reference": "authors' validated labels (not designer CAD)",
+  "prereg": "docs/REAL_DATA_M2_PREREG.md",
+  "prereg_commit": "2753140d4919f0b3c2a2fe2f8d2f2f4c91bf3e67",
+  "arms": {
+    "native": 1.0,
+    "half": 0.5
+  },
+  "cal_ids": [
+    "0000",
+    "0160",
+    "0320"
+  ],
+  "calibration": {
+    "native": {
+      "reliable": true,
+      "contrast": 71.87525350760605,
+      "loo": [
+        70.75793225506199,
+        68.71517027849478,
+        74.58750019665618
+      ],
+      "clamp": [
+        27.0,
+        216.0
+      ]
+    },
+    "half": {
+      "reliable": true,
+      "contrast": 87.75982049098215,
+      "loo": [
+        82.97739782071784,
+        94.79859781858715,
+        85.88353868486259
+      ],
+      "clamp": [
+        33.56939403412292,
+        236.05279300037452
+      ]
+    }
+  },
+  "near_miss": {
+    "d_star": 0.07981795997351367,
+    "e_star": 2.534513847414397,
+    "z_star": 5.32604901798999
+  },
+  "robust_cfg": {
+    "guard": true,
+    "guard_rel_spread": 0.5,
+    "clamp": [
+      0.5,
+      99.5
+    ],
+    "max_shift": 12.0,
+    "cd_correct": false,
+    "cd_grid": [
+      -8.0,
+      8.0,
+      0.5
+    ]
+  },
+  "wall_s": 3460.8954527378082
+}

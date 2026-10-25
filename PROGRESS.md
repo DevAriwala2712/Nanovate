@@ -634,3 +634,12 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
 - Surprise: errors reshuffle (particle 98% -> 81%, filament called killer 32% -> 62%, open 70% -> 79%, notch 23% -> 16%);
   the raw oracle wafer makes a worse reference than the smoothed pseudo-CAD for nuisance (26.6% vs 10.4% false killer).
 - Track C Rung 3 unblocked.
+
+### Track C real-wiring test M2 (2026-10-25; real data, run once; `docs/REAL_DATA_M2.md`)
+- Data: doi:10.17617/3.HY5SYN (CC-BY-4.0), 321 metal-2 images of a commercial 128 nm IC, 14.65 nm/px; reference = authors'
+  validated track/via labels. Prereg 2753140. Frozen Rung 1d verifier; calibration = central tiles of images 0000/0160/0320.
+- Native (primary, 64,536 QC-passed tiles, 318 images): KILLER 0.31% [0.24, 0.39] MET; coverage 100% MET; NEAR_MISS 76.9%
+  [76.3, 77.4] NOT MET. x0.5 arm: KILLER 1.0%, NEAR_MISS 84%.
+- Surprise / diagnosis (post-hoc): SDF energy median 13.6 on real vs 1.6 on synthetic nuisance; NEAR_MISS 36% in via-free
+  tiles vs 87-94% with vias. Vias are 2-3x brighter than tracks; one conductor level cannot represent them.
+- Label-QC first version (Otsu) missed medium-grey tracks; replaced by a label-informed midpoint threshold before the prereg.
