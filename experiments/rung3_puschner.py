@@ -248,7 +248,8 @@ def _verify_tile_task(args):
                 continue
             im = load_window(z, tile_file, pd.Series(w), cache)
             t0 = time.perf_counter()
-            r, d = verify_cell(im, ref, (w["box_r0"], w["box_r1"], w["box_c0"], w["box_c1"]), win, pc, rc, rcfg)
+            box = tuple(int(w[k]) for k in ("box_r0", "box_r1", "box_c0", "box_c1"))
+            r, d = verify_cell(im, ref, box, win, pc, rc, rcfg)
             z_ = r.reason
             out.append(dict(i=w["i"], j=w["j"], tile=tile_file, verdict=r.verdict, d_beta0=z_["delta_betti"][0], d_beta1=z_["delta_betti"][1],
                             n_bridge_events=z_["n_bridge_events"], n_open_events=z_["n_open_events"], bottleneck=z_["bottleneck_max"],

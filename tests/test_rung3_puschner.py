@@ -28,7 +28,7 @@ def test_verify_tile_task_and_summary(tmp_path, monkeypatch):
     ims = {0: _cell(), 1: _cell(swap=True)}
     monkeypatch.setattr(R, "load_window", lambda z, f, w, cache=None: ims[int(w["i"])])
     monkeypatch.setattr(R.zipfile, "ZipFile", lambda *a, **k: __import__("contextlib").nullcontext())
-    rows = [dict(i=i, j=0, key=("T1", "0"), box_r0=64, box_r1=192, box_c0=48, box_c1=208, win_r0=0, win_c0=0) for i in (0, 1)]
+    rows = [dict(i=i, j=0, key=("T1", "0"), box_r0=64.0, box_r1=192.0, box_c0=48.0, box_c1=208.0, win_r0=0.0, win_c0=0.0) for i in (0, 1)]  # floats, as from the NaN-bearing windows table
     rows.append(dict(i=2, j=0, key=("T2", "0"), box_r0=0, box_r1=1, box_c0=0, box_c1=1, win_r0=0, win_c0=0))
     out = pd.DataFrame(R._verify_tile_task(("tileA", rows)))
     assert out.verdict.tolist()[2] == "NO_REFERENCE"
