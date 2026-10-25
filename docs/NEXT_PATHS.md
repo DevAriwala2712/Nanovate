@@ -209,6 +209,8 @@ We cannot isolate a tool from vibration, but we can be robust to what it does to
 
 - [ ] Uses Phase 4's reference-die mode (clean neighbour image as the reference instead of CAD). Only after Phase 4's synthetic check passes its kill condition. *Phase 4 passed (2026-10-25): Rung 3 is unblocked.*
 
+*Rung 3 run (2026-10-25, `docs/REAL_DATA_RUNG3.md`): reference-cell mode on the Puschner 90 nm chip, 429,232 cells: KILLER 28.0% (**not met**; fillers 43%, functional 12%), NEAR_MISS 1.1%, coverage 94.6%. False killers are extra components (dbeta0 +2 typical), likely a splice-seam artefact. Recall not measurable (positions withheld).*
+
 ### Rung 4: industry partner data
 
 - [ ] Only after Rungs 1 and 2 have results. Under NDA; same pre-registration rules.

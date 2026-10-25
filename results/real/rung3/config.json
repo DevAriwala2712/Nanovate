@@ -1,0 +1,14 @@
+{
+  "data": "REAL backside SEM, 90 nm chip (Puschner et al.)",
+  "reference": "median of same-type instances (no polygon CAD)",
+  "prereg": "docs/REAL_DATA_RUNG3_PREREG.md",
+  "prereg_commit": "1e7ba06071f9b6b3bd1c036780de60a064b01734",
+  "scale": 0.5,
+  "window": 256,
+  "k_ref": 15,
+  "min_group": 4,
+  "references_built": 825,
+  "references_reliable": 825,
+  "wall_s": 9836.446109771729,
+  "pass_a_s": 53.86486077308655
+}

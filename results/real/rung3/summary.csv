@@ -1,0 +1,14 @@
+scope,metric,mean,ci_lo,ci_hi,n_instances,n_tiles
+all verifiable instances,KILLER (any window),0.2804963283259403,0.2774221984433251,0.28388850561405266,429232,1082.0
+all verifiable instances,NEAR_MISS (no killer window),0.010896205315540313,0.009966183494375246,0.011933715186692841,429232,1082.0
+all verifiable instances,topology change (dbeta != 0 in any window),0.43093245610765274,0.4213967690686502,0.4416855293568858,429232,1082.0
+all verifiable instances,verified (calibration reliable),1.0,1.0,1.0,429232,1082.0
+functional cells,KILLER (any window),0.12158376038797579,0.11709008358873721,0.12635797104222168,210941,1073.0
+functional cells,NEAR_MISS (no killer window),0.020318477678592593,0.018350870103452654,0.022185168898688514,210941,1073.0
+functional cells,topology change (dbeta != 0 in any window),0.3721846393067256,0.3560236202145401,0.3875866148296601,210941,1073.0
+functional cells,verified (calibration reliable),1.0,1.0,1.0,210941,1073.0
+filler cells,KILLER (any window),0.4340582067057277,0.42748785054694954,0.4409641107082939,218291,1073.0
+filler cells,NEAR_MISS (no killer window),0.001791186993508665,0.001572871841284682,0.002043792919755043,218291,1073.0
+filler cells,topology change (dbeta != 0 in any window),0.48770219569290535,0.48095866807314197,0.4948912335166293,218291,1073.0
+filler cells,verified (calibration reliable),1.0,1.0,1.0,218291,1073.0
+all instances,coverage = verified instances / all GDS instances,0.9457574088355184,,,453850,

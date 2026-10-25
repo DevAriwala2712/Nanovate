@@ -643,3 +643,11 @@ cross-seed comparison with the v2 README table is not like-for-like; use the pai
 - Surprise / diagnosis (post-hoc): SDF energy median 13.6 on real vs 1.6 on synthetic nuisance; NEAR_MISS 36% in via-free
   tiles vs 87-94% with vias. Vias are 2-3x brighter than tracks; one conductor level cannot represent them.
 - Label-QC first version (Otsu) missed medium-grey tracks; replaced by a label-informed midpoint threshold before the prereg.
+
+### Track C Rung 3 (2026-10-25; real data, run once; `docs/REAL_DATA_RUNG3.md`)
+- Puschner 90 nm backside SEM, registration rot90+mirror at 12.23 nm/px (matches the 2.52 um row pitch); reference-cell mode
+  (median of 15 same-type instances, spliced cell box). 429,232 cells verified (coverage 94.6%).
+- KILLER 28.0% [27.7, 28.4] NOT MET (fillers 43.4%, functional 12.2%); NEAR_MISS 1.1%; all 825 references calibrated reliably.
+- Disclosures: first attempt crashed (float slice indices, fixed 1e7ba06); second stopped by the user (power), nothing written.
+- Surprise: killers are extra components (dbeta0 +2 typical), concentrated in filler types EC/EG (54-56%); likely a splice-seam
+  artefact of the method, not the topology core (M2: 0.31%).
